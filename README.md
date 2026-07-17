@@ -1,17 +1,72 @@
-# frugal
-
 <p align="center">
-  <img src="assets/logo.png" width="280" alt="frugal — the guy who just found a $0.30 charge he does not recognize" />
+  <img src="assets/logo.png" width="260" alt="frugal — the guy who just found a $0.30 charge he does not recognize" />
 </p>
 
-**Cloud cost awareness for coding agents.** ([中文 README](README.zh.md)) Agents deploy to Vercel, spin up
-Neon databases, run E2B sandboxes, push commits that trigger GitHub Actions —
-all metered — and non-technical users only find out on the monthly bill.
-frugal makes the agent spend consciously: check usage before spending,
-announce paid resources in one line, tear down what it provisions.
+<h1 align="center">frugal</h1>
+
+<p align="center"><b>Cloud cost awareness for coding agents.</b></p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@yuanbopang/frugal"><img src="https://img.shields.io/npm/v/%40yuanbopang%2Ffrugal?color=cb3837&label=npm" alt="npm" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" /></a>
+  <a href="https://github.com/yuanboP/frugal/actions/workflows/test.yml"><img src="https://github.com/yuanboP/frugal/actions/workflows/test.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/services-22%20groups-blue" alt="22 service groups" />
+  <img src="https://img.shields.io/badge/hosts-11%2B-8A2BE2" alt="11+ hosts" />
+</p>
+
+<p align="center">English | <a href="README.zh.md">简体中文</a></p>
+
+---
+
+Agents deploy to Vercel, spin up Neon databases, run E2B sandboxes, push
+commits that trigger GitHub Actions — all metered — and non-technical users
+only find out on the monthly bill. frugal makes the agent spend consciously:
+check usage before spending, announce paid resources in one line, tear down
+what it provisions.
 
 Works across Claude Code, Codex, GitHub Copilot, Qoder, Gemini CLI, OpenCode,
 pi, Cursor, Windsurf, Cline, and Kiro — one ruleset, one source of truth.
+
+## How it saves you money
+
+```mermaid
+flowchart LR
+    A["Agent runs<br/>vercel deploy"] --> B{frugal<br/>PreToolUse hook}
+    B -->|"first touch<br/>this session"| C["one-line reminder injected:<br/>free-tier walls · #1 trap ·<br/>spend-cap status · usage command"]
+    B -->|"already reminded /<br/>daily cap (5) reached"| D[silent]
+    C --> E["agent checks plan + usage,<br/>tells user in one line,<br/>proceeds consciously"]
+```
+
+Two layers, both context-cheap (~2 KB of rules per session + at most 5
+one-line reminders per day):
+
+```mermaid
+flowchart TB
+    subgraph always["SessionStart — rules (always on, ~2 KB)"]
+        R1["check usage on first touch · announce paid resources ·<br/>ephemeral things must die · alerts are not brakes ·<br/>paid plans fail OPEN · bots bill you"]
+    end
+    subgraph jit["PreToolUse — data (just-in-time, per provider)"]
+        K1["vercel → Vercel numbers"]
+        K2["wrangler r2 → R2 numbers"]
+        K3["git push + workflows/ → Actions minutes"]
+        K4["sk-… in command → key-leak warning"]
+    end
+    always -.->|"how to behave"| Agent
+    jit -.->|"exact numbers, when relevant"| Agent
+```
+
+Real incidents from the 272-story X corpus this plugin internalizes — and
+the tripwire that now fires first:
+
+| Real bill | What happened | frugal tripwire |
+|---|---|---|
+| **$600,000** | leaked OpenAI key abused | key-shaped literal in a command / `.env` staged → warn + rotate |
+| **$36,000/mo** | Cloudflare queue re-enqueue loop (3.13B KV writes) | `wrangler` → "NO hard cap anywhere on CF — guard recursion" |
+| **$104,000** | Netlify viral-traffic bill (pre-reform) | `netlify` → credits system + hard-pause explained |
+| **$25,672** | GCP spend blew past a $10 budget (alerts lag 24-48h) | rule: **alerts are not brakes** — pair with quota caps |
+| **~$700/mo** | agent push loop running full CI on macOS runners | `git push` with workflows → timeout-minutes + concurrency + macOS≈10x |
+| **$5,000/mo** | Firestore useEffect read loop at 100 users | `firebase` → per-READ billing + maxInstances + recursion check |
+| **$1,200** | Claude CLI silently billing API instead of subscription | `claude` with `ANTHROPIC_API_KEY` set → dual-rail warning |
 
 ## What it does
 
