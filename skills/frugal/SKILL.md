@@ -28,6 +28,11 @@ money that is not yours.
   plan with different walls — never assume the free tier. Determine the plan
   with a read-only command where one exists, otherwise ask once; then reason
   against THAT plan's quotas (full plan tables: `references/providers.md`).
+- **Paid plans fail OPEN.** Free tiers fail closed (service stops — annoying,
+  costs nothing). Paid/serverless plans fail open: overage bills scale
+  without limit unless a spend cap is set. On a paid plan, cost awareness
+  matters MORE, not less — first check whether a spend cap or alert exists
+  and is actually on.
 - **Before creating a paid resource** (deploy, database, sandbox, VM, bucket):
   tell the user in one line that it incurs cost. Prefer free tiers and local
   dev first — `wrangler dev`, `vercel dev`, a Neon branch instead of a new
@@ -65,3 +70,27 @@ prices, and sources: `references/providers.md` in this skill.
 | GitHub | 2,000 private Actions min/mo (public unlimited), 120 Codespaces core-hr, 500 MB storage | Actions minutes in 2-3 weeks of auto-deploys — then workflows SILENTLY fail at the $0 default limit | `gh api /users/{u}/settings/billing/usage` |
 | Supabase | 2 active projects, 500 MB DB, 5 GB egress, 50k MAU | 7-day idle AUTO-PAUSE kills deploy-and-forget apps; Pro: each extra project/branch bills ~$10/mo uncapped by Spend Cap | dashboard org usage |
 | AWS/GCP/Azure | Lambda/Az Functions 1M req + 400K GB-s/mo; Cloud Run 2M req but 1 GB egress; AWS $200 credit / 6-mo auto-close | NAT gateway (~$33/mo idle), forgotten instances, egress | `aws ce get-cost-and-usage` / `az consumption usage list` |
+
+## Paid-plan tripwires (fail-open walls)
+
+When the user IS on a paid plan, these are the researched danger spots:
+
+- **Vercel Pro**: Spend Management defaults to a **$200 notification**, not a
+  stop; auto-pause is opt-in and paused projects never auto-unpause. Builds
+  bill by default (Elastic machines) — every agent push costs CPU-minutes.
+- **Neon Launch/Scale**: pure pay-as-you-go, $0 base. The free-tier suspend
+  becomes a **silent bill**: one always-on 1 CU compute ≈ $77/mo (Launch);
+  egress past 500 GB bills $0.10/GB; autosuspend CAN be disabled — make sure
+  it isn't, and set Neon's spend limit (alerts at ~80%/100%).
+- **Cloudflare Workers Paid**: $5/mo floor, then open-ended — KV writes
+  $5/M, Durable Objects duration $12.50/M GB-s, D1 writes $1/M.
+- **Supabase Pro**: Spend Cap exists but does **not** cover per-project
+  compute — each extra project/branch bills ~$10/mo regardless.
+- **GitHub**: raising the $0 Actions spending limit opens unbounded
+  per-minute billing; macOS runners ~10x Linux.
+- **E2B Pro**: $150/mo raises concurrency/session limits only — sandbox
+  seconds still bill on top.
+- **Fly.io**: pure PAYG with **no billing alerts at all** — inventory
+  machines/volumes regularly (`fly machine list`, `fly volumes list`).
+- **AWS/GCP/Azure**: no default caps — set `aws budgets` / `gcloud billing
+  budgets` / Azure cost alerts before provisioning anything.

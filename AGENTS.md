@@ -13,6 +13,9 @@ non-technical and only find out on the monthly bill.
 - Know the plan before reasoning about quotas: users may be on a paid plan
   with different walls — never assume the free tier. Check with a read-only
   command where one exists, otherwise ask once.
+- Paid plans fail OPEN: free tiers stop the service, paid/serverless plans
+  bill overage without limit unless a spend cap is set. On a paid plan cost
+  awareness matters more, not less — verify a cap or alert exists.
 - Before creating a paid resource (deploy, database, sandbox, VM, bucket):
   tell the user in one line that it incurs cost. Prefer free tiers and
   local dev first (`wrangler dev`, `vercel dev`, a Neon branch,
