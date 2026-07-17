@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 // Shared instruction builder: every host (Claude hooks, Codex, Copilot,
-// OpenCode, pi) injects the same SKILL.md body through this one function.
+// OpenCode, pi) injects the same text through this one function.
+//
+// ponytail: inject AGENTS.md (compact rules, ~15 lines), NOT SKILL.md — the
+// quota tables would tax every session's context while the PreToolUse hook
+// already delivers the right provider's numbers just-in-time. Full tables
+// stay in the skill for on-demand reads.
 
 const fs = require('fs');
 const path = require('path');
 
-const SKILL_PATH = path.join(__dirname, '..', 'skills', 'frugal', 'SKILL.md');
+const RULES_PATH = path.join(__dirname, '..', 'AGENTS.md');
 const HEADER = 'FRUGAL MODE ACTIVE — cloud cost awareness\n\n';
 
 const FALLBACK =
@@ -19,8 +24,9 @@ const FALLBACK =
 
 function getFrugalInstructions() {
   try {
-    const body = fs.readFileSync(SKILL_PATH, 'utf8').replace(/^---[\s\S]*?---\s*/, '');
-    return HEADER + body;
+    const body = fs.readFileSync(RULES_PATH, 'utf8').replace(/^# Frugal\s*/, '');
+    return HEADER + body +
+      '\nFull quota/plan tables live in the frugal skill (references/providers.md) — read on demand, per-provider reminders arrive as you use billable CLIs.\n';
   } catch {
     return FALLBACK;
   }
