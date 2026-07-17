@@ -41,6 +41,9 @@ carry real numbers (researched 2026-07, dual-engine: parallel Claude web
 research + grok CLI runs per provider, cross-checked against official
 pricing pages). Full plan tables, overage prices, cost traps, and sources:
 [`skills/frugal/references/providers.md`](skills/frugal/references/providers.md).
+The complete raw research — both engines' reports per provider plus the
+merged machine-readable factsheets — is archived in
+[`research/`](research/).
 
 Covered: Vercel, Cloudflare (Workers/R2/KV/D1), Neon, Railway, Fly.io, E2B,
 Browserbase, GitHub (Actions/Codespaces), Supabase, AWS/GCP/Azure,

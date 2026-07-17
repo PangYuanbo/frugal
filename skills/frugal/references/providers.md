@@ -1,6 +1,6 @@
 # Metered cloud providers — quotas, plans, traps (researched 2026-07)
 
-Factsheets for 10 metered cloud providers, focused on what agent-built apps actually hit: free-tier walls, first-quota-blown scenarios, cost traps, and how to check usage. All numbers verified against official pricing/docs pages in July 2026.
+Factsheets for 10 metered cloud providers, focused on what agent-built apps actually hit: free-tier walls, first-quota-blown scenarios, cost traps, and how to check usage. All numbers verified against official pricing/docs pages in July 2026. Raw dual-engine research reports (with per-engine source URLs): see `research/` at the repo root.
 
 **Providers:** [Vercel](#vercel) · [Cloudflare](#cloudflare-developer-platform) · [Neon](#neon) · [Railway](#railway) · [Fly.io](#flyio) · [E2B](#e2b) · [Browserbase](#browserbase) · [GitHub](#github-actions--codespaces--packages--git-lfs) · [Supabase](#supabase) · [AWS / GCP / Azure](#aws--gcp--azure-hyperscaler-slice)
 

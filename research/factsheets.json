@@ -1,0 +1,1165 @@
+{
+  "sheets": [
+    {
+      "provider": "Browserbase",
+      "billing_dimensions": [
+        "browser time (wall-clock, billed per minute, 1-minute minimum per session; allocated as browser hours/month, $/hr overage)",
+        "proxy bandwidth (billed per MB, 1-MB minimum per session; allocated as GB/month, $/GB overage)",
+        "Search API calls (per 1k over included quota, $7/1k)",
+        "Fetch API calls (per 1k over included quota; higher rate when proxied)",
+        "Extract API calls (per 1k; $4/1k, $7/1k with proxies)",
+        "Agent runs (fixed monthly call allocation per plan)",
+        "Model Gateway LLM tokens (pay-as-you-go at market price; $5 credit on Free)",
+        "NOT meters (hard limits, return 429s not charges): concurrent browsers, max session duration, session-creation rate/min, data retention days, project count"
+      ],
+      "free_tier": "$0/mo, no credit card. 1 browser hour/month (60 min), 3 concurrent browsers, 15-min max session, 5 session creations/min, 0 GB proxy (proxies unavailable), no CAPTCHA solving/Stealth/keepAlive, 1,000 Search calls (2/sec), 1,000 Fetch calls (5/sec), 3 agent runs, $5 Model Gateway token credit, 7-day data retention, 1 project. No pay-as-you-go overage path: hitting 1 hr is a hard stop, not a charge.",
+      "plans": [
+        {
+          "name": "Free",
+          "price": "$0/mo",
+          "included": "1 browser hr, 3 concurrent, 15-min max session, 5 creates/min, 0 GB proxy, 1k Search, 1k Fetch, 3 agent runs, $5 model-token credit, 7-day retention, 1 project",
+          "overage": "None — hard stop at allocation (no pay-as-you-go on Free)"
+        },
+        {
+          "name": "Developer",
+          "price": "$20/mo",
+          "included": "100 browser hrs, 25 concurrent, 6-hr max session, 25 creates/min, 1 GB proxy, 1k Search, 1k Fetch, 15 agent runs, Basic Stealth + auto CAPTCHA, up to 2 projects, retention 30d per pricing page (docs table says 7d)",
+          "overage": "$0.12/browser hr (~$0.002/min); $12/GB proxy; Search $7/1k; Fetch $1/1k ($4/1k proxied); Extract $4/1k ($7/1k proxied)"
+        },
+        {
+          "name": "Startup",
+          "price": "$99/mo (labeled Most Popular on pricing page)",
+          "included": "500 browser hrs, 100 concurrent, 6-hr max session, 50 creates/min, 5 GB proxy, 1k Search, 10k Fetch, 50 agent runs, 30-day retention, up to 5 projects, priority support",
+          "overage": "$0.10/browser hr; $10/GB proxy; Search $7/1k; Fetch $0.5/1k ($4/1k proxied); Extract $4/1k ($7/1k proxied)"
+        },
+        {
+          "name": "Scale",
+          "price": "Custom (contact sales)",
+          "included": "250+ concurrent, 150+ creates/min, 6+ hr sessions, flexible/usage-based hours and proxy, Advanced Stealth + Verified Identity, HIPAA BAA/DPA/SSO, 30+ day retention, Slack/high-priority support",
+          "overage": "Custom / usage-based"
+        }
+      ],
+      "first_quota_blown": "Free: browser hours — 1 hr/mo dies in one afternoon of agent dev (~30-60 short sessions at the 1-min floor, or 4 max-length 15-min sessions); the 15-min session cap also breaks any long agent task. Developer $20: browser hours (100) if agents loop or leak sessions, or proxy GB first if proxies are on by default (1 GB ≈ 200-500 proxied page loads at 2-5 MB/page — gone in days); parallel test suites hit the 25-concurrent cap (429s) before any dollar overage. Startup $99: proxy GB (5) for scraping-heavy agents, or browser hours for always-on keepAlive fleets.",
+      "sweet_spots": "Free = demo/eval only. Developer $20 = solo dev / one production agent: 100 hrs ≈ 3,000 sub-2-min page tasks (Browserbase's own FAQ math) or ~200 half-hour agent sessions. Startup $99 = small team / production agent fleet / CI browser tests: 500 hrs ≈ 15k short tasks, 100 concurrent for parallel runs. Hour overage is cheap ($0.10-0.12/hr) so rarely upgrade for hours alone — upgrade Dev→Startup for concurrency (25→100), proxy volume (1→5 GB, $12→$10/GB), or 10x Fetch quota; break-even on hours alone is ~660 extra hrs/mo. Scale = 250+ concurrency, Verified Identity, compliance (HIPAA/SSO).",
+      "traps": [
+        "Leaked sessions run to the 6-hr max duration billing wall-clock the whole time ($0.72/leak Dev, $0.60 Startup); silent volume is the killer: 25 leaked sessions/day = ~4,500 hrs/mo ≈ $540 overage on Developer",
+        "keepAlive sessions do NOT die on disconnect — a crashed agent with keepAlive:true bills until explicitly released; always sessions.update(id,{status:'REQUEST_RELEASE'}) in a finally block",
+        "1-minute billing minimum per session: 10,000 five-second CI/micro-sessions bill as ~167 hrs; reuse sessions instead of session-per-action/per-poll",
+        "proxies:true globally meters every page load at $10-12/GB residential bandwidth (plus 1-MB per-session minimum inflating tiny sessions); media-heavy pages can burn 1 GB in one session — block images, enable proxies selectively",
+        "Proxied Fetch API is $4/1k vs $0.5-1/1k unproxied — 4-8x for one flag; Extract $7/1k proxied vs $4/1k",
+        "Concurrency ceiling (3 Free / 25 Dev) makes parallel agent swarms 429 and retry-storm into the session-creation rate limit (5/25/50 per min)",
+        "Raising the project-wide default timeout in dashboard settings multiplies every leak's cost across all sessions",
+        "Model Gateway is a separate market-price LLM bill, easy to miss next to browser hours; 'Runtime/Functions free' still consumes browser minutes via auto-created sessions",
+        "Free plan has no overage path: prototypes hard-stop mid-month at 1 hr"
+      ],
+      "usage_check": "No official spend CLI. API: GET https://api.browserbase.com/v1/projects/{project_id}/usage with header X-BB-API-Key (returns browserMinutes, proxyBytes); SDK: bb.projects.usage(projectId) (Node/Python). Dashboard: https://www.browserbase.com/overview (sessions, browser minutes, proxy data; 24h/7d/30d/billing-cycle ranges); plan/billing under Settings → Usage & billing. Find runaway sessions: GET /v1/sessions?status=RUNNING; kill with POST /v1/sessions/{id} body {\"status\":\"REQUEST_RELEASE\"}. Segment by tagging userMetadata on sessions.",
+      "keywords": [
+        "browserbase",
+        "browserbasehq",
+        "@browserbasehq/sdk",
+        "@browserbasehq/stagehand",
+        "@browserbasehq/cli",
+        "@browserbasehq/mcp",
+        "stagehand",
+        "bb.sessions",
+        "browserbase_api_key",
+        "browserbase_project_id",
+        "x-bb-api-key",
+        "api.browserbase.com",
+        "connect.browserbase.com",
+        "wss://connect.browserbase",
+        "pip install browserbase",
+        "connectovercdp",
+        "session.connecturl",
+        "keepalive",
+        "browse-cli",
+        "bb publish",
+        "bb dev"
+      ],
+      "hint": "Browserbase free: 1 browser-hr/mo (hard stop), 3 concurrent, 15-min max session, no proxies. Dev $20=100hrs/25conc, Startup $99=500hrs/100conc. 1-min billing floor per session; #1 trap: leaked/keepAlive sessions bill to 6-hr cap and survive disconnect — always REQUEST_RELEASE in finally.",
+      "conflicts": [
+        "'Most popular' plan label: Report A said Developer, Report B said Startup — pricing page fetch confirms it is on Startup ($99). B wins.",
+        "Developer data retention: pricing page says 30 days, docs plan table says 7 days (verified by live fetch of both official pages; genuinely inconsistent between Browserbase's own sources). Per tie-break rule the pricing page (30 days) wins, but docs' 7 days is noted since retention is a limit, not a charge.",
+        "Startup Fetch overage: A said $0.50/1k, B noted a $1/1k bullet on marketing copy — both live fetches (pricing page and docs) confirm $0.5/1k. Resolved: $0.5/1k.",
+        "Free concurrent browsers: A noted a third-party tracker showing 1 — both official pages confirm 3. Resolved: 3.",
+        "Scale plan hours: pricing page shows '500+ usage-based', docs say 'Flexible' — no material conflict, kept as flexible/usage-based."
+      ],
+      "sources": [
+        "https://www.browserbase.com/pricing (fetched 2026-07-17)",
+        "https://docs.browserbase.com/account/billing/plans (fetched 2026-07-17)",
+        "https://docs.browserbase.com/reference/api/get-project-usage",
+        "https://docs.browserbase.com/optimizations/cost/measuring-usage",
+        "https://docs.browserbase.com/optimizations/cost/cost-optimization",
+        "https://docs.browserbase.com/platform/browser/long-sessions/keep-alive",
+        "https://docs.browserbase.com/platform/browser/long-sessions/timeouts",
+        "https://docs.browserbase.com/account/billing/plan-management",
+        "https://www.browserbase.com/changelog/massive-price-decrease",
+        "https://www.browserbase.com/blog/series-b-and-beyond"
+      ]
+    },
+    {
+      "provider": "Cloudflare (Developer Platform: Workers, KV, D1, Durable Objects, Queues, R2, Pages, Containers, Workers Builds)",
+      "billing_dimensions": [
+        "Workers/Pages Functions: requests (per M) + CPU time (per M CPU-ms); wall-clock duration NOT billed; egress free; static asset requests free",
+        "R2: storage GB-month, Class A ops (writes/lists) per M, Class B ops (reads) per M, Infrequent Access retrieval $/GB; egress always $0; deletes free",
+        "KV: keys read/written/deleted + list requests (per M each), storage GB-month",
+        "D1: rows read + rows written (per M), storage GB-month; rows read = rows SCANNED not returned",
+        "Durable Objects: requests, duration GB-s wall-clock while active (unlike Workers), SQLite rows read/written + stored GB (billed since Jan 7 2026), legacy KV-backend read/write units",
+        "Queues: operations (1 op per 64 KB written/read/deleted; ~3 ops per delivered message)",
+        "Workers Builds: build minutes over included; Pages: builds/month (plan-gated)",
+        "Containers (Paid only): memory GiB-s, vCPU-s, disk GB-s while running + regional network egress (NOT free, unlike R2/Workers)",
+        "Workers Logs: events per M; Hyperdrive: queries/day cap on free",
+        "No per-seat billing on the developer platform"
+      ],
+      "free_tier": "Daily, reset 00:00 UTC, HARD-FAIL (429/errors, never auto-bills): Workers 100,000 req/day + 10 ms CPU/invocation. KV: 100k reads, 1,000 writes, 1,000 deletes, 1,000 lists/day; 1 GB. D1: 5M rows read, 100k rows written/day; 5 GB total, 10 DBs, 500 MB/DB. DO (SQLite backend only): 100k req/day, 13,000 GB-s/day, 5M rows read/100k written/day, 5 GB. Queues: 10,000 ops/day (~3,300 msgs), 24h retention. Workers Logs 200k events/day. Hyperdrive 100k queries/day. Monthly: R2 10 GB-month + 1M Class A + 10M Class B, egress $0 (Standard only; IA has no free tier). Workers Builds 3,000 min/mo (1 concurrent, 20-min timeout). Pages: 500 builds/mo, 1 concurrent, unlimited static requests. Containers: not available on free.",
+      "plans": [
+        {
+          "name": "Workers Free",
+          "price": "$0",
+          "included": "100k req/day, 10 ms CPU/invocation; KV 1k writes/100k reads/day; D1 5M reads/100k writes/day, 5 GB; DO 100k req + 13k GB-s/day (SQLite only); Queues 10k ops/day; Builds 3,000 min/mo",
+          "overage": "None — limits hard-fail with errors instead of billing"
+        },
+        {
+          "name": "Workers Paid",
+          "price": "$5/month minimum (covers Workers, Pages Functions, KV, D1, DO, Queues, Containers, Hyperdrive)",
+          "included": "10M requests + 30M CPU-ms/mo (CPU cap 30 s default, up to 5 min); KV 10M reads/1M writes/1M deletes/1M lists, 1 GB; D1 25B rows read/50M written, 5 GB; DO 1M req + 400k GB-s + 25B rows read/50M written + 5 GB; Queues 1M ops, retention to 14 d; Builds 6,000 min, 6 concurrent; Logs 20M events; Containers 25 GiB-h mem + 375 vCPU-min + 200 GB-h disk",
+          "overage": "Req $0.30/M; CPU $0.02/M CPU-ms; KV reads $0.50/M, writes/deletes/lists $5.00/M, $0.50/GB-mo; D1 $0.001/M read, $1.00/M written, $0.75/GB-mo; DO req $0.15/M, duration $12.50/M GB-s, SQL storage $0.20/GB-mo (KV-backend: reads $0.20/M, writes $1.00/M); Queues $0.40/M; Builds $0.005/min; Logs $0.60/M; Container egress $0.025–0.05/GB by region"
+        },
+        {
+          "name": "R2 (pay-as-you-go, no subscription)",
+          "price": "$0 base, usage beyond free tier",
+          "included": "10 GB-mo + 1M Class A + 10M Class B free monthly; egress always $0",
+          "overage": "Standard: $0.015/GB-mo, Class A $4.50/M, Class B $0.36/M. Infrequent Access: $0.01/GB-mo + 30-day minimum, Class A $9/M, Class B $0.90/M, retrieval $0.01/GB. Usage rounds UP to next billing unit"
+        },
+        {
+          "name": "Pages (zone Pro / Business)",
+          "price": "Pro $25/mo; Business $250/mo",
+          "included": "Pro: 5,000 builds/mo, 5 concurrent; Business: 20,000 builds/mo, 20 concurrent (free: 500/mo)",
+          "overage": "Builds are plan-gated counts, not metered; Pages Functions bill as Workers requests"
+        }
+      ],
+      "first_quota_blown": "Free tier: KV writes (1,000/day) blow first for any app writing session/state per request — dead at ~1k daily page views, often within minutes under load. Runners-up: Workers 100k req/day under polling (one 5s-poll client = 17,280 req/day), D1 100k rows written/day (indexes multiply writes; unindexed scans burn the 5M reads/day), Queues ~3,300 msgs/day, Pages 500 builds/mo at ~16 commits/day. Paid tier: the $5 floor holds until DO duration (400k GB-s ≈ one 128 MB object awake ~36 days) from non-hibernating WebSockets, or KV writes at $5/M.",
+      "sweet_spots": "Free fits prototypes/hobby APIs under ~1.1 req/s sustained with few writes. Workers Paid $5 fits nearly all small-to-medium production apps — 10M req + 30M CPU-ms is huge headroom; docs examples: 15M req @7ms ≈ $8/mo, 100M req @7ms ≈ $45/mo; most real bills stay $5–10. D1 paid inclusions (25B reads/50M writes) are effectively never the bottleneck. R2's $0 egress makes it the right home for large downloads (vs S3). Containers require Paid from request one.",
+      "traps": [
+        "KV write amplification: writes/deletes/lists cost $5.00/M on paid (reads 10x cheaper); a 1/sec heartbeat writer = 2.6M writes/mo ≈ $13. Free tier: 1,000 writes/day dies in minutes under load",
+        "Durable Objects kept awake bill wall-clock GB-s at $12.50/M: WebSockets accepted without the Hibernation API, or tight setAlarm loops (each alarm = request + row written), accumulate silently",
+        "DO SQLite storage bills since Jan 7 2026 (older estimates omit it): deleting rows isn't enough — call storage.deleteAll() or residual metadata keeps billing GB-month; forgotten per-test DOs charge forever",
+        "D1 rows read = rows SCANNED, not returned: an unindexed SELECT in a polling loop reads millions of rows/hour; every index multiplies rows written per INSERT",
+        "Per-test provisioning is billable: real wrangler d1 execute / KV put / R2 put in CI burns quota — use --local / Miniflare; R2 bucket churn and multipart parts each count as Class A ops ($4.50/M)",
+        "R2 Infrequent Access is wrong for hot agent scratch data: no free tier, 30-day minimum charged even if deleted early, $0.01/GB retrieval",
+        "Queues poison messages: each retry re-bills read ops on the 3-ops/message baseline at $0.40/M; tune max retries + DLQ",
+        "Auto-deploy on every agent commit: eats Pages 500 free builds/mo (preview+prod each consume one) and Workers Builds 3,000 free min/mo (5-min builds x 20/day exhausts it); build main only",
+        "Containers egress is NOT free ($0.025–0.05/GB by region) — don't assume R2's zero-egress applies platform-wide; don't route large downloads through Containers",
+        "Cache hits and run_worker_first routes still count as Workers requests on the free 100k/day meter",
+        "Free-tier limits hard-fail (429/errors) rather than auto-billing — good for cost control, bad for uptime"
+      ],
+      "usage_check": "Dashboard (authoritative for spend): dash.cloudflare.com -> Manage Account -> Billing -> Billable Usage (deep link https://dash.cloudflare.com/?to=/:account/billing) + Budget Alerts; per-product metrics under /:account/workers-and-pages, /:account/workers/d1, /:account/r2/overview. No first-class `wrangler billing` command; partial CLI: `wrangler d1 info <DB>` (size, rows read/written this period), `wrangler r2 bucket info <bucket>`, `wrangler pages deployment list`, plus meta.rows_read/rows_written on every D1 response. API: GraphQL Analytics at POST https://api.cloudflare.com/client/v4/graphql (datasets workersInvocationsAdaptive, r2StorageAdaptiveGroups, d1AnalyticsAdaptiveGroups, durableObjectsInvocationsAdaptiveGroups, queueConsumerMetricsAdaptiveGroups); billing history: GET /client/v4/accounts/{account_id}/billing/history.",
+      "keywords": [
+        "wrangler",
+        "npx wrangler",
+        "cloudflared",
+        "workerd",
+        "miniflare",
+        "wrangler.toml",
+        "wrangler.jsonc",
+        "workers.dev",
+        "pages.dev",
+        "r2.cloudflarestorage.com",
+        "wrangler r2",
+        "wrangler kv",
+        "wrangler d1",
+        "wrangler pages",
+        "wrangler queues",
+        "durable_objects",
+        "kv_namespaces",
+        "hyperdrive",
+        "compatibility_date",
+        "cloudflare_api_token",
+        "cloudflare_account_id",
+        "cf_api_token",
+        "dash.cloudflare.com",
+        "api.cloudflare.com",
+        "getplatformproxy",
+        "@cloudflare/vitest-pool-workers"
+      ],
+      "hint": "CF free (daily, hard-fails): 100k req + 10ms CPU; KV 1k writes (blows first); D1 100k writes, scans bill every row; R2 10GB, $0 egress. Paid $5/mo = 10M req + 30M CPU-ms. Traps: KV writes $5/M; non-hibernated DOs $12.50/M GB-s.",
+      "conflicts": [
+        "No numeric contradictions found: every quota/price present in both reports matched exactly, and all core figures were re-verified 2026-07-17 against the live official pages (developers.cloudflare.com/workers/platform/pricing/ and /r2/pricing/)",
+        "Usage-via-CLI: Report A implied wrangler covers usage checks; Report B (and docs) correct that there is no wrangler billing/spend command — resolved as B for spend (Billable Usage dashboard/GraphQL), keeping A's per-resource commands (wrangler d1 info etc.) as partial signals",
+        "Builds coverage gap, not a conflict: A reported Pages builds (500 free/mo; Pro 5,000/Business 20,000) while B reported Workers Builds minutes (3,000 free / 6,000 paid + $0.005/min) — separate products, both retained",
+        "Single-source items accepted after live verification on the official Workers pricing page: Containers, Workers Logs (200k/day free; 20M + $0.60/M paid), Hyperdrive 100k queries/day (all B-only); DO SQLite storage billing effective Jan 7 2026 and DO KV-backend unit rates (A-only, backed by official changelog URL)",
+        "Minor omission noted: the live page summary listed KV free writes/deletes but both reports agree list requests are also 1,000/day — kept per both reports' citation of the KV pricing page"
+      ],
+      "sources": [
+        "https://developers.cloudflare.com/workers/platform/pricing/",
+        "https://developers.cloudflare.com/r2/pricing/",
+        "https://developers.cloudflare.com/kv/platform/pricing/",
+        "https://developers.cloudflare.com/d1/platform/pricing/",
+        "https://developers.cloudflare.com/durable-objects/platform/pricing/",
+        "https://developers.cloudflare.com/queues/platform/pricing/",
+        "https://developers.cloudflare.com/pages/functions/pricing/",
+        "https://developers.cloudflare.com/pages/platform/limits/",
+        "https://developers.cloudflare.com/workers/ci-cd/builds/limits-and-pricing/",
+        "https://developers.cloudflare.com/changelog/post/2025-12-12-durable-objects-sqlite-storage-billing/",
+        "https://developers.cloudflare.com/billing/manage/billable-usage/",
+        "https://developers.cloudflare.com/analytics/graphql-api/"
+      ]
+    },
+    {
+      "provider": "E2B",
+      "billing_dimensions": [
+        "Compute time of RUNNING sandboxes only, billed per second: vCPU-seconds at $0.000014/vCPU/s ($0.0504/vCPU/hr); tiers 1/2/4/6/8 vCPU = $0.000014/$0.000028/$0.000056/$0.000084/$0.000112 per s",
+        "RAM GiB-seconds at $0.0000045/GiB/s ($0.0162/GiB/hr), configurable 512 MiB-8,192 MiB; default sandbox = 2 vCPU + 512 MiB ~= $0.109/hr",
+        "Billing stops the moment a sandbox is paused, killed, or times out; paused snapshots cost $0 compute",
+        "Flat plan base fee (Pro $150/mo) buys LIMITS only, not credits; usage billed on top, charged at start of each month for prior month",
+        "Storage: free allowance only (10 GiB Hobby / 20 GiB Pro); no published self-serve per-GiB overage - more is contact-us",
+        "Concurrency add-ons as flat monthly fees (Pro+ +$500/mo for 600, Pro++ +$1,000/mo for 1,100)",
+        "NOT metered: egress/bandwidth, API requests, seats, per-sandbox-create fees, template builds (concurrency limit only)"
+      ],
+      "free_tier": "Hobby: $0/mo, no credit card to start, ONE-TIME $100 usage credit (never refills). Limits: 1-hour max continuous session, 20 concurrent running sandboxes, 1 sandbox created/sec, 20 concurrent template builds, max 8 vCPU + 8 GB RAM per sandbox, 10 GiB storage. Same per-second rates as Pro. $100 at default size (2 vCPU + 512 MiB, ~$0.1089/hr) ~= 918 sandbox-hours (~38 days one always-on box, or ~5,500 ten-minute sessions).",
+      "plans": [
+        {
+          "name": "Hobby",
+          "price": "$0/mo + usage",
+          "included": "One-time $100 credit; 1h max session; 20 concurrent sandboxes; 1 create/sec; 8 vCPU / 8 GB RAM max; 10 GiB storage; community support",
+          "overage": "Pure per-second usage: $0.000014/vCPU/s + $0.0000045/GiB-RAM/s after credit is gone"
+        },
+        {
+          "name": "Pro",
+          "price": "$150/mo + usage",
+          "included": "NO usage credits (fee buys limits only); 24h max session; 100 concurrent sandboxes; 5 creates/sec; 20 GiB storage; customizable CPU/RAM (8+ via support)",
+          "overage": "Same per-second rates as Hobby, no discount"
+        },
+        {
+          "name": "Pro+ (concurrency add-on)",
+          "price": "+$500/mo on top of Pro",
+          "included": "600 concurrent sandboxes (official pricing.e2b.dev estimator)",
+          "overage": "Usage still metered at standard per-second rates"
+        },
+        {
+          "name": "Pro++ (concurrency add-on)",
+          "price": "+$1,000/mo on top of Pro",
+          "included": "1,100 concurrent sandboxes (official pricing.e2b.dev estimator)",
+          "overage": "Usage still metered at standard per-second rates"
+        },
+        {
+          "name": "Enterprise",
+          "price": "Custom, $3,000/mo minimum (official pricing.e2b.dev estimator)",
+          "included": "1,100+ concurrent, custom session length / CPU / RAM / disk / rate limits, volume discounts and bonus credits",
+          "overage": "Custom contract"
+        },
+        {
+          "name": "Startups program (application, not retail)",
+          "price": "Pro pricing",
+          "included": "Pro plan + $20,000 one-time usage credits for qualifying AI startups (e2b.dev/startups)"
+        }
+      ],
+      "first_quota_blown": "On Hobby the first hard wall is the 1-HOUR SESSION LIMIT: any dev-server/preview/long agent sandbox dies at 60 min (pause/resume resets the window but disrupts live servers). The first COST wall is forgotten running sandboxes eating the $100 credit: one default box left running 24/7 burns ~$2.61/day, and a 2vCPU+4GiB box ~$3.97/day drains the whole credit in ~26 days. Next walls: 20 concurrent sandboxes (~20 users each holding a live preview) and 1 create/sec throttling burst test matrices.",
+      "sweet_spots": "Hobby: prototyping, demos, short code-exec/CI sandboxes - until you need >1h sessions, >20 concurrent, >1 create/sec, or the one-time $100 runs out. Pro ($150): any production agent product; required for 24h sessions, 100 concurrent, 5 creates/sec. Pro+/Pro++ (+$500/+$1,000): heavy parallel evals needing 600/1,100 concurrent - add-on fee dominates before raw CPU $ does. Enterprise (>=$3k/mo): 1,100+ concurrent or custom runtime. Always-on default box on Pro ~= $150 + ~$80 usage ~= $230/mo.",
+      "traps": [
+        "Forgotten running sandboxes: per-second billing until timeout/kill - default box $2.61/day (~$78-80/mo), 2vCPU+4GiB $3.97/day, 8vCPU+8GiB $12.79/day (~$384/mo, more than the Pro fee); 50 leaked boxes for a day ~= $130",
+        "set_timeout(24h) 'as insurance' turns every abandoned sandbox into a $2.6-$12.8/day leak; keep the default 5-min timeout and extend only when needed",
+        "Idle-while-thinking: sandbox bills during the agent's LLM turns and package installs (npm/pip on boot count as run time - cache deps in custom templates); pause between turns",
+        "Polling/health-check loops reset the timeout clock and keep a should-be-dead sandbox billing forever",
+        "Snapshot sprawl: paused sandboxes persist INDEFINITELY (no TTL), do not count toward concurrency, and their snapshots eat the 10/20 GiB storage allowance - easy to accumulate thousands silently; reap with `e2b sandbox list --state paused` + kill (keepMemory:false shrinks snapshots)",
+        "Pro $150 includes ZERO compute - it only raises limits; all usage is metered on top",
+        "Hobby 1h hard stop kills long agent sessions mid-task; even Pro caps continuous runtime at 24h, so always-on product UX needs pause/resume architecture",
+        "Egress is unmetered (no published price) but big downloads still burn CPU-seconds and disk allowance",
+        "No hard spend ceiling by default - set budget alerts/limits at the dashboard budget page before letting agents provision",
+        "Report B claims the account is BLOCKED once the $100 credit is exhausted until a card is added (fail-closed mid-prod risk) - not confirmed on the official pricing page, treat as likely",
+        "Auth migration: E2B_ACCESS_TOKEN deprecated - no new tokens after 2026-07-01, all stop working 2026-08-01; use E2B_API_KEY"
+      ],
+      "usage_check": "Spend is dashboard-only (no CLI/API spend endpoint): https://e2b.dev/dashboard?tab=usage (costs and sandbox-hours), ?tab=budget (spending limits/alerts), ?tab=billing, ?tab=keys. For leak-hunting running/paused resources: `e2b sandbox list --state running --format json` (also --state paused, --limit N, --metadata k=v), kill with `e2b sandbox kill <id>`. Cost estimator: https://pricing.e2b.dev/. CLI install: `npm i -g @e2b/cli` or `brew install e2b`.",
+      "keywords": [
+        "e2b",
+        "e2b sandbox",
+        "e2b template",
+        "e2b auth",
+        "@e2b/cli",
+        "@e2b/code-interpreter",
+        "e2b_code_interpreter",
+        "e2b-code-interpreter",
+        "e2b_api_key",
+        "e2b_access_token",
+        "api.e2b.dev",
+        "e2b.dev",
+        "e2b.toml",
+        "pip install e2b",
+        "npm i -g @e2b/cli",
+        "npm i e2b",
+        "npx e2b",
+        "brew install e2b",
+        "from e2b"
+      ],
+      "hint": "E2B free: $100 one-time credit, 1h session cap, 20 concurrent, 1/s creates; default 2vCPU+512MiB~$0.109/hr. Billed per-second while RUNNING - pause/kill idle sandboxes (leak ~$2.61/day). Pro $150/mo buys limits only, no credits.",
+      "conflicts": [
+        "Concurrency add-on pricing: A said not published; B cited Pro+ 600 concurrent +$500/mo and Pro++ 1,100 +$1,000/mo. WebFetch of official https://pricing.e2b.dev/ confirms both add-ons verbatim - B wins.",
+        "Enterprise minimum: A treated ~$3,000/mo as unofficial third-party reporting; WebFetch of official https://pricing.e2b.dev/ shows 'Enterprise requires $3,000/mo minimum' - B wins, number is official.",
+        "$100-credit runway at default size: A said ~920 hrs, B said ~918 hrs - rounding only; exact math ($100 / $0.1089/hr) gives ~918 hrs, B's figure kept.",
+        "Account blocked when free credits exhaust: claimed only by B; not confirmed by the official pricing page fetch - unresolved, kept as a flagged likely-true trap.",
+        "e2b.dev/pricing itself lists no Pro+/Pro++ tiers or Enterprise floor (only 'purchase extra concurrency up to 1,100' and 'contact us') - those numbers live solely on the official estimator pricing.e2b.dev."
+      ],
+      "sources": [
+        "https://e2b.dev/pricing (re-verified via WebFetch 2026-07-17: plans, per-second rates, limits, storage, $100 credit)",
+        "https://pricing.e2b.dev/ (official estimator, re-verified via WebFetch 2026-07-17: Pro+ +$500/mo @600, Pro++ +$1,000/mo @1,100, Enterprise $3,000/mo minimum)",
+        "https://e2b.dev/docs/billing (per-second billing model, billing cycle, budget alerts, cost tips)",
+        "https://e2b.dev/docs/sandbox/persistence (pause/resume, no snapshot TTL, keepMemory)",
+        "https://e2b.mintlify.app/docs/faq/paused-sandboxes-concurrency.md (paused sandboxes excluded from concurrency)",
+        "https://e2b.mintlify.app/docs/cli/list-sandboxes.md and https://e2b.dev/docs/cli (CLI commands and install)",
+        "https://e2b.dev/docs/api-key (API key auth, access-token deprecation 2026-07-01/2026-08-01)",
+        "https://e2b.dev/startups ($20,000 startup credits)",
+        "Unofficial corroboration only: northflank.com/blog/e2b-vs-vercel-sandbox, beam.cloud/blog/e2b-pricing-explained"
+      ]
+    },
+    {
+      "provider": "Fly.io",
+      "billing_dimensions": [
+        "Started Machines: per-second while in `started` state, priced by CPU/RAM preset, region-scaled (ams shared-cpu-1x 256MB = $2.02/mo 24/7; regions range $1.94 syd to $3.14 bom); extra RAM ~$5/GB per 30 days",
+        "Stopped/suspended Machines: rootfs $0.15/GB per 30 days (stopped is not free)",
+        "Volumes: $0.15/GB-month of PROVISIONED capacity, prorated hourly, billed even when detached or machine stopped",
+        "Volume snapshots: $0.08/GB-month, first 10GB/mo free — new charge since Jan 1, 2026 (first invoice impact Feb 2026)",
+        "Egress (public internet) per GB by region group: NA/EU $0.02, APAC/Oceania/SA $0.04, Africa/India $0.12; inbound free",
+        "Private cross-region transfer (orgs created after 2024-07-18, 'granular rates'): $0.006 / $0.015 / $0.050 per GB by same region groups; same-region private free",
+        "Dedicated IPv4: $2/mo per app; static egress IP $0.005/hr (~$3.60/mo); shared IPv4 + IPv6 free",
+        "SSL certs: first 10 single-hostname free per org, then $0.10/mo each; wildcard $1/mo",
+        "Fly Kubernetes (FKS): $75/mo per cluster + compute/storage",
+        "Managed Postgres: plan fee ($38–$1,922/mo) + $0.28/GB-month storage (max 1TB)",
+        "Extensions (Tigris, Upstash Redis): partner list price passed through on Fly invoice; transfer to them bills as Fly transfer",
+        "Support subscriptions: Standard $29/mo, Premium $199/mo, Enterprise from $2,500/mo; compliance/HIPAA package $99/mo",
+        "Machine reservation blocks: annual prepay for monthly compute credit, 40% effective discount (e.g. $36/yr → $5/mo shared credit)",
+        "NOT billed: HTTP requests, seats (unlimited org members), inbound transfer, builds"
+      ],
+      "free_tier": "NO ongoing free tier for new accounts (plans/allowances deprecated Oct 7, 2024). One-time free trial only: 2 total VM-hours of runtime (per-second, shared across all machines) OR 7 days, whichever first; max 10 machines; max 2 vCPU / 4GB RAM per machine; 20GB volume storage; trial machines auto-stop after 5 min; no dedicated IPv4, performance CPUs, or GPUs. Adding a credit card ends the trial and starts metered billing; no card by day 7 → apps stop. Legacy grandfathered orgs (pre-Oct-2024 Hobby/Launch/Scale) keep: 3x shared-cpu-1x 256MB VMs, 3GB volumes, egress 100GB/mo NA+EU + 30GB APAC/Oceania/SA + 30GB Africa/India (lost permanently if org converts). Free for everyone: inbound transfer, same-region private transfer, shared IPv4 + IPv6, first 10 SSL certs, first 10GB/mo snapshot storage. Allowances never cap the bill; no billing alerts exist.",
+      "plans": [
+        {
+          "name": "Pay As You Go (only plan for new orgs)",
+          "price": "$0/mo base",
+          "included": "Nothing after trial; unlimited seats; shared IPv4/IPv6, 10 SSL certs, 10GB snapshots free",
+          "overage": "All usage at full metered rates; prepaid credits available (min $25) in lieu of card"
+        },
+        {
+          "name": "Machine reservation blocks",
+          "price": "$36/yr (shared) or $144/yr (performance), up to $14,400/yr",
+          "included": "$5/mo shared or $20/mo performance compute credit per block (CPU+RAM only, no rollover)",
+          "overage": "Usage beyond credit at normal rates; 40% effective discount on covered compute"
+        },
+        {
+          "name": "Support Standard / Premium / Enterprise",
+          "price": "$29 / $199 / from $2,500 per mo",
+          "included": "Support only, no infra credits",
+          "overage": "n/a"
+        },
+        {
+          "name": "Compliance (HIPAA) package",
+          "price": "$99/mo",
+          "included": "Compliance features",
+          "overage": "n/a"
+        },
+        {
+          "name": "Managed Postgres (add-on): Basic/Starter/Launch/Scale/Performance",
+          "price": "$38 / $72 / $282 / $962 / $1,922 per mo",
+          "included": "Basic=shared-2x 1GB ... Performance=perf-8x 64GB; no free/hobby DB plan",
+          "overage": "+$0.28/GB-month storage, max 1TB; cluster survives app deletion"
+        },
+        {
+          "name": "Legacy Hobby/Launch/Scale (grandfathered only, closed to new orgs since 2024-10-07)",
+          "price": "$0–$5+/mo",
+          "included": "3x shared-cpu-1x 256MB, 3GB volumes, 100/30/30 GB regional egress",
+          "overage": "Metered at normal rates; leaving is one-way"
+        }
+      ],
+      "first_quota_blown": "The trial's 2 total VM-hours: a single always-on shared-cpu-1x exhausts it in 2 wall-clock hours (5-min auto-stop masks it briefly), and any real deploy/test/redeploy loop burns it in an afternoon — then all apps stop until a card is added. After a card: first surprise line items are (1) `fly launch` creating 2 machines by default (HA), (2) provisioned volume GB billing 24/7 even when stopped/detached, (3) Managed Postgres minimum $38/mo.",
+      "sweet_spots": "Pure PAYG, nothing to outgrow. Cheapest always-on: 1x shared-cpu-1x 256MB, shared IPv4, no volume = $1.94–$3.14/mo by region ($2.02 ams; ~$1.20 effective with reservation block); auto-stop staging can be <$1/mo. Typical 2-machine app + small self-managed Postgres ~$13–20/mo; MPG jumps that to $38+ minimum. Per-second billing makes ephemeral sandboxes/CI machines very cheap (~$0.0000008/s for 256MB) as long as they're destroyed, not just stopped. Reservation blocks (40% off) worth it once steady compute exceeds ~$5/mo. Colocate app+DB in one region so private transfer is free.",
+      "traps": [
+        "Auto-stop defeated by polling: health checks, uptime monitors, or the agent's own loop restart machines — docs warn 'any random request might spin a machine up again'",
+        "`fly launch` defaults to 2 machines (HA) — silently doubles compute on every scaffolded app; fix with `fly scale count 1`",
+        "Stopped is not free: rootfs $0.15/GB-mo per stopped machine; a fleet of forgotten fat-image sandboxes adds up",
+        "Volumes bill full provisioned size 24/7 even detached; deleting a machine does NOT always delete its volume — `fly volumes destroy` explicitly",
+        "Deleting an app does NOT delete Managed Postgres ($38+/mo), Upstash Redis, or Tigris buckets — orphaned services keep billing",
+        "No MPG free/hobby plan: 'add a database' per project = $38/mo each",
+        "Snapshots bill since Jan 1, 2026: default daily snapshots across many volumes can exceed the 10GB free band",
+        "Egress region multiplier: Africa/India $0.12/GB is 6x NA/EU; cross-region private app<->DB traffic bills $0.006–$0.05/GB",
+        "No billing alerts and no spend caps — a runaway loop bills until you check the dashboard",
+        "Dedicated IPv4 $2/mo per app: real money across 50 preview/agent-scaffolded apps",
+        "Metrics-based autoscaler can CREATE machines (FAS_CREATED_MACHINE_COUNT) — cap counts",
+        "GPU machines deprecated, unavailable after Aug 1, 2026 (were $0.70–$1.50/hr)"
+      ],
+      "usage_check": "No flyctl billing/usage command exists. Dashboard: https://fly.io/dashboard/personal/billing (replace `personal` with org slug) — month-to-date bill, invoices (Stripe portal), Trial Status panel. Inventory billable resources via `fly apps list`, `fly machine list`, `fly volumes list`, `fly ips list`, `fly scale show`; estimate with https://fly.io/calculator/; billing questions to billing@fly.io.",
+      "keywords": [
+        "fly",
+        "flyctl",
+        "fly.toml",
+        "fly launch",
+        "fly deploy",
+        "fly machine",
+        "fly machines",
+        "fly scale",
+        "fly volumes",
+        "fly apps",
+        "fly ips",
+        "fly certs",
+        "fly secrets",
+        "fly proxy",
+        "fly ssh",
+        "fly logs",
+        "fly status",
+        "fly postgres",
+        "fly mpg",
+        "fly pg",
+        "fly redis",
+        "fly storage",
+        "fly ext",
+        "fly orgs",
+        ".fly.dev",
+        ".internal",
+        "flycast",
+        "registry.fly.io",
+        "fly_api_token",
+        "fly_app_name",
+        "fly_region",
+        "api.machines.dev",
+        "litefs",
+        "shared-cpu-",
+        "performance-",
+        "primary_region",
+        "fly-replay",
+        "fks"
+      ],
+      "hint": "Fly.io: NO free tier; trial=2 VM-hours or 7 days (10 machines, 20GB vol) — one always-on VM burns it in 2h. Then PAYG: shared-1x 256MB ~$2/mo; `fly launch` creates 2 machines; volumes+stopped rootfs $0.15/GB-mo; MPG min $38/mo; no billing alerts.",
+      "conflicts": [
+        "Cheapest-region attribution: Report B claimed $1.94/mo shared-cpu-1x 256MB is a US-region (iad/sjc) price; official pricing page says the range is $1.94 (Sydney/syd) to $3.14 (Mumbai/bom) with ams at $2.02 — official page won; $1.94 kept as floor, not as a US price",
+        "FKS $75/mo per cluster appeared only in Report B — confirmed against official pricing page, kept",
+        "GPU deprecation: Report A said only 'deprecated in 2026 docs'; Report B said unavailable after Aug 1, 2026 — official page confirms 'unavailable after August 1', B won",
+        "Report A's per-second rate (~$0.00000075/s) implies $1.94/mo yet A labels its table $2.02 ams — internal rounding artifact in A; per-region monthly figures from the official page treated as authoritative",
+        "Compliance $99/mo: A calls it 'HIPAA compliance package' (pricing docs), B calls it 'compliance package (community announcement)' — same price, A's HIPAA framing kept"
+      ],
+      "sources": [
+        "https://fly.io/docs/about/pricing/",
+        "https://fly.io/docs/about/free-trial/",
+        "https://fly.io/docs/about/billing/",
+        "https://fly.io/docs/about/cost-management/",
+        "https://fly.io/docs/mpg/",
+        "https://fly.io/pricing/",
+        "https://fly.io/calculator/"
+      ]
+    },
+    {
+      "provider": "GitHub (Actions / Codespaces / Packages / Git LFS)",
+      "billing_dimensions": [
+        "Seats: $/user/month (Team, Enterprise; Pro is personal)",
+        "Actions minutes: per-minute on GitHub-hosted runners for private repos, each job rounded UP to nearest whole minute; billed to repo owner; public repos free on standard runners; self-hosted free",
+        "Actions larger runners: $/minute always billed, even on public repos; no included-minute pool",
+        "Shared storage (Actions artifacts + Packages): GB-month, hourly accrual, $0.25/GB-month overage ($0.008/GB/day)",
+        "Actions cache: $0.07/GB-month above 10 GB per repo",
+        "Packages data transfer (egress): per GB downloaded, ~$0.50/GB; free via GITHUB_TOKEN inside Actions; GHCR container storage/bandwidth currently free (subject to 1-month-notice change)",
+        "Codespaces compute: core-hours (wall time x cores), e.g. 2-core $0.18/hr up to 32-core $2.88/hr; storage $0.07/GB-month accrues even while stopped; prebuilds burn Actions minutes + storage",
+        "Git LFS: metered storage $0.07/GiB-month + bandwidth $0.0875/GiB ($5 data packs discontinued)",
+        "Copilot premium requests: separate per-request meter",
+        "Default spending limit is $0 for metered products: overage is silently BLOCKED, not billed, until raised"
+      ],
+      "free_tier": "GitHub Free (personal & orgs): 2,000 Actions min/mo for private repos on standard hosted runners (UNLIMITED free on public repos; larger runners always paid); 500 MB shared Actions-artifact+Packages storage; 10 GB Actions cache per repo; 1 GB Packages data transfer/mo; Codespaces 120 core-hours/mo (= 60 h 2-core / 30 h 4-core / 15 h 8-core) + 15 GB-month storage — PERSONAL accounts only, orgs get zero free Codespaces; Git LFS 10 GiB storage + 10 GiB bandwidth/mo. Overage rates: Linux 2-core $0.006/min, Windows 2-core $0.010/min, macOS $0.062/min, storage $0.25/GB-mo — but blocked at default $0 budget.",
+      "plans": [
+        {
+          "name": "GitHub Free",
+          "price": "$0 (personal + orgs)",
+          "included": "2,000 private Actions min/mo; 500 MB shared artifact+Packages storage; 10 GB cache/repo; 1 GB Packages transfer/mo; Codespaces 120 core-h + 15 GB-mo (personal only, orgs none); LFS 10 GiB storage + 10 GiB bandwidth",
+          "overage": "Blocked at default $0 budget until raised; then Linux 2c $0.006/min, Win 2c $0.010/min, macOS $0.062/min, storage $0.25/GB-mo, Packages egress $0.50/GB, Codespaces 2c $0.18/hr, LFS $0.07/GiB-mo + $0.0875/GiB"
+        },
+        {
+          "name": "GitHub Pro",
+          "price": "$4/mo (personal only)",
+          "included": "3,000 private Actions min/mo; 2 GB shared storage (official product-usage-included page; some Actions docs said 1 GB — 2 GB confirmed); 10 GB Packages transfer/mo; Codespaces 180 core-h + 20 GB-mo; LFS 10 GiB / 10 GiB",
+          "overage": "Same unit rates as Free"
+        },
+        {
+          "name": "GitHub Team",
+          "price": "$4/user/mo (pricing page labels it 'first 12 months' — verify renewal)",
+          "included": "3,000 private Actions min/mo; 2 GB shared storage; 10 GB Packages transfer/mo; NO free Codespaces (org-metered from $0 default budget); LFS 250 GiB / 250 GiB; larger runners available; 75 GB custom runner-image storage",
+          "overage": "Same unit rates; worked official example: 5,000 extra min (3k Linux + 2k Windows) = $38"
+        },
+        {
+          "name": "GitHub Enterprise Cloud",
+          "price": "from $21/user/mo ('first 12 months' framing on pricing page)",
+          "included": "50,000 Actions min/mo; 50 GB shared storage; 100 GB Packages transfer/mo; no free Codespaces; LFS 250 GiB / 250 GiB; 150 GB custom image storage",
+          "overage": "Same unit rates"
+        }
+      ],
+      "first_quota_blown": "Actions minutes (2,000/mo private on Free). An auto-deploy pipeline of 8-15 min per push at ~10-12 pushes/day burns the whole month in ~2-3 weeks (~130-250 deploys total); one agent session of 20 CI re-run iterations x 10 min = 200 min. macOS jobs at $0.062/min (~10x Linux) make it far worse. Second casualty: 500 MB shared artifact/Packages storage — a 100 MB artifact per build at default 90-day retention blows it within a week of daily builds. Then Codespaces 120 core-hours (an 8-core box running 24/7 exhausts it in 15 hours) and LFS 10 GiB bandwidth if CI pulls large LFS files each run.",
+      "sweet_spots": "Free: public-repo OSS (unlimited standard-runner minutes) and light private CI (~1-2 short Linux deploys/day). Pro ($4): solo dev with private repos + moderate Codespaces (180 core-h). Team ($4/user): small teams needing larger runners and 250 GiB LFS — but still only 3,000 Actions min, and org Codespaces bill from $0 with no free quota. Enterprise ($21/user): heavy CI/monorepos needing 50k min. High-frequency agent CI on private repos outgrows Free/Pro/Team minutes fast; consider public repos or self-hosted runners (still free) before upgrading.",
+      "traps": [
+        "Cron/polling workflows: '*/5 * * * *' running a 1-min private job = ~8,640 min/mo = 4.3x the entire Free quota; a 5-second job bills a full 60 seconds (per-job round-up)",
+        "Matrix explosions: 3 OS x 4 versions = 12x minutes, with macOS legs at $0.062/min (~10x Linux) and Windows ~1.7x",
+        "Larger runners have NO free pool and bill even on public repos — 'spin a big box per PR' is pure spend",
+        "Re-run loops: failed 5-min + successful 10-min run = 15 min charged; agents re-run CI constantly",
+        "Forgotten Codespaces: compute stops at 30-min idle timeout but storage bills continuously ($0.07/GB-mo) until DELETED; prebuilds burn Actions minutes + storage per region",
+        "Artifact hoarding: upload-artifact default 90-day retention accrues GB-hours at $0.008/GB/day; deleting doesn't refund past accrual — set retention-days: 1-7",
+        "LFS in CI: every checkout with lfs:true / git lfs pull burns the OWNER's LFS bandwidth ($0.0875/GiB metered; data packs are gone); a 500 MB file pulled 20x kills the 10 GiB Free quota",
+        "Private package/image pulls with a PAT (self-hosted runner, external server) bill ~$0.50/GB; the same pull with GITHUB_TOKEN inside Actions is free",
+        "$0 default spending limit = silent outage: when Free quota exhausts mid-month, workflows just fail/queue until the 1st — no bill, no warning beyond 90%/100% emails",
+        "Org accounts get ZERO free Codespaces core-hours — every core-hour bills (or blocks) from day one",
+        "Copilot code review on private repos consumes Actions minutes + premium requests",
+        "Copilot agent cloud sandboxes are a separate meter (compute-seconds/GiB-seconds), not Actions free minutes"
+      ],
+      "usage_check": "CLI: `gh api /users/USERNAME/settings/billing/usage` or `gh api /organizations/ORG/settings/billing/usage` (enhanced billing platform; returns usageItems with product/sku/quantity/pricePerUnit/netAmount; fine-grained PAT needs 'Plan: read' / org 'Administration: read'). Also `/…/usage/summary` (public preview), per-workflow `gh api repos/OWNER/REPO/actions/workflows/FILE.yml/timing`, cache `gh api repos/OWNER/REPO/actions/cache/usage`. Dashboard: https://github.com/settings/billing (org: /organizations/ORG/settings/billing). Legacy /settings/billing/actions endpoints are deprecated. Alert emails at 90% and 100% of included usage.",
+      "keywords": [
+        "gh ",
+        "gh api",
+        "gh workflow",
+        "gh run",
+        "gh codespace",
+        "gh cs",
+        "gh package",
+        "gh release",
+        "gh actions-cache",
+        "actions/checkout",
+        "actions/cache",
+        "actions/upload-artifact",
+        ".github/workflows",
+        "workflow_dispatch",
+        "runs-on",
+        "ubuntu-latest",
+        "macos-latest",
+        "windows-latest",
+        "self-hosted",
+        "actions-runner",
+        "github_token",
+        "github.token",
+        "github_actions",
+        "ghcr.io",
+        "docker push ghcr",
+        "npm.pkg.github.com",
+        "maven.pkg.github.com",
+        "nuget.pkg.github.com",
+        "docker.pkg.github.com",
+        "git lfs",
+        "git-lfs",
+        "codespaces",
+        "devcontainer",
+        "devcontainer.json",
+        "prebuild",
+        "act ",
+        "copilot"
+      ],
+      "hint": "GitHub Free: 2000 private Actions min/mo (public repos unlimited), 500MB artifact/pkg storage, 120 Codespaces core-h, 10GiB LFS. #1 trap: auto-deploy/cron CI eats 2k min in weeks; macOS $0.062/min ~10x Linux; $0 budget = silent block.",
+      "conflicts": [
+        "Pro shared storage: Report B flagged Actions docs saying 1 GB vs Packages docs saying 2 GB. Resolved via WebFetch of official https://docs.github.com/en/billing/reference/product-usage-included (2026-07-17): Pro = 2 GB shared Actions+Packages storage. Report A's 2 GB wins.",
+        "Included-minute consumption: Report A claims Windows 2x / macOS 10x multipliers deplete included minutes (2,000 min = 200 macOS min); Report B says 2026 docs count minutes 1:1 wall-clock with per-OS rates only applying to paid overage. WebFetch of the current runner-pricing page (A's own multiplier URL now serves 'Actions Runner Billing' with no multiplier language) and the Actions billing page found NO multiplier statements — Report B's 1:1 framing wins for current docs, though macOS overage is still ~10x Linux by price ($0.062 vs $0.006/min).",
+        "Report A's claim that 200 real macOS minutes exhausts the whole Free month depends on the disproven multiplier model — dropped from merged facts.",
+        "Non-conflicts confirmed by both + officially: 2,000/3,000/50,000 min tiers, LFS 10/250 GiB, Codespaces 120/180 core-h personal-only, Team $4 & Enterprise $21 with 'first 12 months' promo framing, LFS data packs discontinued."
+      ],
+      "sources": [
+        "https://github.com/pricing",
+        "https://docs.github.com/en/billing/reference/product-usage-included",
+        "https://docs.github.com/en/billing/reference/actions-runner-pricing",
+        "https://docs.github.com/en/billing/managing-billing-for-your-products/about-billing-for-github-actions",
+        "https://docs.github.com/en/billing/concepts/product-billing/github-codespaces",
+        "https://docs.github.com/en/billing/concepts/product-billing/github-packages",
+        "https://docs.github.com/billing/managing-billing-for-git-large-file-storage/about-billing-for-git-large-file-storage",
+        "https://docs.github.com/en/rest/billing/usage",
+        "https://github.com/pricing/calculator",
+        "https://github.blog/changelog/2026-02-17-api-access-to-billing-usage-reports-in-public-preview/"
+      ]
+    },
+    {
+      "provider": "AWS / GCP / Azure (hyperscaler agent-relevant slice: serverless compute, storage, egress, VPC/NAT)",
+      "billing_dimensions": [
+        "AWS Lambda: requests (per-1M) + GB-seconds duration (1ms granularity; INIT/cold-start phase billed since Aug 2025) + ephemeral storage >512MB + provisioned concurrency (not free-tier covered)",
+        "AWS S3: GB-month by class + PUT/LIST-class ($0.005/1k) vs GET-class ($0.0004/1k) requests + data transfer out",
+        "AWS EC2: instance-seconds (60s min) + EBS GB-month + public IPv4 $0.005/hr (in-use OR idle)",
+        "AWS NAT Gateway: $0.045/hr provisioned + $0.045/GB processed, both directions",
+        "AWS egress: GB to internet aggregated account-wide, first 100 GB/mo free (excl. China/GovCloud); cross-AZ/region $0.01-0.02/GB; inbound free",
+        "GCP Cloud Run request-based: vCPU-seconds + GiB-seconds while serving + per-1M requests + egress; instance-based: whole instance lifetime at lower unit rates; min-instances bill idle time",
+        "GCP egress: per GB, Premium tier (default, pricier) vs Standard tier, by destination; collateral: Cloud Build minutes, Artifact Registry storage, Serverless VPC Access compute",
+        "Azure Functions Consumption: executions (per-1M) + GB-s (memory rounded up to 128MB buckets, min 100ms/128MB); Flex: on-demand meters + optional always-ready baseline; co-created Storage Account bills separately and is NOT in the free grant",
+        "Azure bandwidth: GB out to internet by zone, first 100 GB/mo free; inbound free"
+      ],
+      "free_tier": "AWS (accounts ≥2025-07-15): NO 12-mo free tier — $100 credit + up to $100 more ($20×5 tasks) = $200 max, expires at 6 months OR exhaustion, then account auto-closes (90-day recovery); always-free (all accounts, monthly): Lambda 1M requests + 400,000 GB-s, 100 GB internet egress, DynamoDB 25 GB, CloudFront 1 TB; legacy pre-2025-07-15 accounts keep 750 hr/mo t2/t3.micro EC2 + RDS 12-mo offers. GCP: $300 trial credit / 90 days (resources pause at expiry, 30-day upgrade window; no GPUs on trial); Cloud Run always-free per billing account/mo: 2M requests + 180,000 vCPU-s + 360,000 GiB-s + only 1 GB NA egress (instance-based mode: 240K vCPU-s + 450K GiB-s); Cloud Run functions 2M invocations + 400K GB-s; 1 e2-micro (us-west1/central1/east1) + 30 GB PD; Cloud Storage 5 GB + 100 GB NA egress; BigQuery 1 TiB query + 10 GiB; Cloud Build 2,500 min. Azure: $200 credit / 30 days (lost if unused; 12-mo free services only if converted to PAYG); Functions Consumption always-free per subscription/mo: 1M executions + 400,000 GB-s (Flex grant smaller: 250K executions + 100K GB-s; Premium: none); Container Apps 180K vCPU-s + 360K GiB-s + 2M requests; 100 GB/mo internet egress free.",
+      "plans": [
+        {
+          "name": "AWS pay-as-you-go (no seat plans)",
+          "price": "$0 base; new-account Free plan = $100-$200 credits, hard 6-month expiry then account auto-close",
+          "included": "Always-free monthly: Lambda 1M req + 400K GB-s, 100 GB egress, DynamoDB 25 GB, CloudFront 1 TB",
+          "overage": "Lambda $0.20/1M req + $0.0000166667/GB-s x86 (Arm $0.0000133334); S3 Standard $0.023/GB-mo, PUT $0.005/1k, GET $0.0004/1k; egress $0.09/GB first tier; NAT GW $0.045/hr + $0.045/GB (~$33/mo idle); public IPv4 $0.005/hr (~$3.60/mo)"
+        },
+        {
+          "name": "GCP pay-as-you-go / Cloud Run (no seat plans)",
+          "price": "$0 base; $300 trial credit / 90 days for new accounts",
+          "included": "Cloud Run always-free/mo: 2M req + 180K vCPU-s + 360K GiB-s + 1 GB NA egress (request-based); 240K vCPU-s + 450K GiB-s (instance-based)",
+          "overage": "Request-based: $0.000024/vCPU-s + $0.0000025/GiB-s + $0.40/1M req; instance-based: $0.000018/vCPU-s + $0.000002/GiB-s; idle min-instances $0.0000025 per vCPU-s and GiB-s; Premium egress $0.12/GB first 1 TB, Standard ~$0.085/GB"
+        },
+        {
+          "name": "Azure Functions Consumption",
+          "price": "$0 base",
+          "included": "1M executions + 400,000 GB-s per subscription per month",
+          "overage": "$0.20/1M executions + $0.000016/GB-s; co-created Storage Account and bandwidth bill separately"
+        },
+        {
+          "name": "Azure Functions Flex Consumption (new default)",
+          "price": "$0 base",
+          "included": "250,000 executions + 100,000 GB-s/mo (on-demand meters only)",
+          "overage": "$0.40/1M executions + ~$0.000026/GB-s on-demand + $0.000004/GB-s always-ready baseline (region-dependent)"
+        },
+        {
+          "name": "Azure Functions Premium",
+          "price": "Always ≥1 instance billed, ~$0.173/vCPU-hr + $0.0123/GB-hr — bills at zero traffic",
+          "included": "No free grant; no cold start; VNET support",
+          "overage": "vCPU-s + GB-s while allocated"
+        }
+      ],
+      "first_quota_blown": "AWS new account: the $200-credit/6-month wall — one default VPC-with-NAT ($33/mo) + small RDS (~$15/mo) ≈ $50/mo burns credits in ~4 months at zero traffic, then the account auto-closes. GCP Cloud Run: the 1 GB NA free egress dies first if serving any assets; else 180K free vCPU-s (~360K req/mo at 500ms CPU each), or instantly with min-instances=1 (~$50+/mo, no free coverage). Azure: 400K GB-s grant (512MB × 1s × 800K executions), though the co-created Storage Account is usually the first nonzero line item; 1M free executions ≈ 0.4 RPS continuous — a 1s poller (2.6M/mo) blows every request grant.",
+      "sweet_spots": "Hobby/demo apps: GCP Cloud Run has the most generous always-free compute (180K vCPU-s ≈ 50 vCPU-hrs/mo, forever) but near-zero free egress (1 GB); Lambda and Azure Functions Consumption have identical forever-free grants (1M req + 400K GB-s) plus 100 GB/mo egress — better for anything serving files. AWS new accounts are on a 6-month countdown: fine for prototypes, wrong for anything meant to keep running. Serverless WITHOUT VPC/NAT stays effectively free at hobby scale on all three; the moment an agent adds NAT, min-instances, Premium/Flex always-ready, or an always-on VM/DB, the bill starts regardless of traffic. Set a $5-20 budget alert day one; tear down agent-provisioned stacks in the same session.",
+      "traps": [
+        "AWS NAT Gateway: $0.045/hr forever + $0.045/GB (~$33/mo idle, 3x for 3 AZs); default 'private Lambda in VPC' CDK/Terraform templates create it; S3/DynamoDB traffic through NAT double-bills unless gateway endpoints added — #1 surprise line item",
+        "AWS free-plan auto-close: at 6 months the whole account and its data are scheduled for deletion — fatal for agent-provisioned 'permanent' infra",
+        "Forgotten per-test EC2/RDS: stopped RDS still bills storage and auto-restarts after 7 days; terminate don't stop; check all regions the agent touched; idle public IPv4s ($3.60/mo each) and EBS volumes/snapshots survive termination",
+        "Cloud Run min-instances / CPU-always-allocated set 'to fix cold starts' converts a free app into ~$50+/mo; instance-based billing has no request free line",
+        "GCP trial cliff: everything pauses at day 90/$300; Premium egress is the default and ~40% pricier than Standard; Serverless VPC Access connector for private Cloud SQL is never free",
+        "Azure: Storage Account co-created with every Function App always bills (not in free grant); Application Insights ingestion keeps billing after function deletion; per-test resource groups left behind = Azure's forgotten-EC2",
+        "Azure Flex Consumption is the pushed default for new Functions: 4x smaller free grant (250K/100K), 2x per-execution price, ~1.6x GB-s rate vs classic Consumption; Premium/always-ready bills while idle",
+        "Polling loops: 1s-interval poller = 2.6M req/mo, past every free request grant; on Cloud Run it also keeps the instance warm burning vCPU-s; 1-min timers x N apps add up",
+        "Egress amplification: agents piping logs/artifacts/model weights/docker layers out — 3-4 GB/day kills the 100 GB/mo free (AWS/Azure); on Cloud Run only 1 GB is free; cross-AZ/region transfer ($0.01-0.02/GB) hides inside 'internal' architectures",
+        "CI thrash: image pushes bloat ECR/Artifact Registry (GCP free is only 0.5 GB) and Cloud Build/pipeline minutes beyond free"
+      ],
+      "usage_check": "AWS: `aws ce get-cost-and-usage --time-period Start=2026-07-01,End=2026-07-17 --granularity MONTHLY --metrics UnblendedCost --group-by Type=DIMENSION,Key=SERVICE` (Cost Explorer API, $0.01/call), `aws freetier get-free-tier-usage`, `aws budgets describe-budgets --account-id <id>`; console: https://console.aws.amazon.com/costmanagement/home (Free Tier page, 85% alerts). GCP: no first-class spend CLI — `gcloud billing accounts list`, `gcloud billing budgets list --billing-account=<id>`; real spend at https://console.cloud.google.com/billing/reports (trial credit on billing overview). Azure: `az consumption usage list --start-date 2026-07-01 --end-date 2026-07-17`, `az costmanagement query --type ActualCost --timeframe MonthToDate --scope subscriptions/<sub-id>`, `az consumption budget list`; portal: https://portal.azure.com/#view/Microsoft_Azure_CostManagement/Menu/~/overview",
+      "keywords": [
+        "aws",
+        "awslocal",
+        "s3://",
+        "aws s3",
+        "aws lambda",
+        "sam deploy",
+        "sam local",
+        "cdk deploy",
+        "cdk synth",
+        "serverless deploy",
+        "amplify",
+        "eb deploy",
+        "ec2",
+        "rds",
+        "ecs",
+        "eks",
+        "fargate",
+        "ecr",
+        "dynamodb",
+        "sqs",
+        "sns",
+        "cloudformation",
+        "boto3",
+        ".amazonaws.com",
+        "gcloud",
+        "gsutil",
+        "gs://",
+        "gcloud run deploy",
+        "gcloud functions deploy",
+        "firebase deploy",
+        "firestore",
+        "bq ",
+        "bigquery",
+        "gcr.io",
+        "pkg.dev",
+        ".run.app",
+        "appspot.com",
+        "az ",
+        "az functionapp",
+        "az webapp",
+        "az vm",
+        "az storage",
+        "func start",
+        "func azure functionapp publish",
+        "azd up",
+        "azd deploy",
+        "bicep",
+        "containerapps",
+        "cosmosdb",
+        ".azurewebsites.net",
+        ".blob.core.windows.net",
+        "terraform",
+        "pulumi"
+      ],
+      "hint": "Free/mo: Lambda & AzFunc 1M req+400K GB-s; Cloud Run 2M req+180K vCPU-s but only 1GB egress; AWS/Azure egress 100GB. New AWS accts: $200 credit, auto-close at 6mo. #1 trap: NAT GW $0.045/hr+/GB (~$33/mo idle); never set min-instances.",
+      "conflicts": [
+        "Azure account-wide free egress: A claims 100 GB/mo internet egress free for all customers citing the official bandwidth pricing page; B claims free bandwidth is product-specific only (e.g. Static Web Apps 100 GB). A wins (official pricing-page URL; Azure has offered first-100-GB-free since 2021). WebFetch verification attempted but timed out.",
+        "Azure Flex Consumption on-demand rate: A says $0.000016/GB-s execution + $0.000004/GB-s always-ready; B says ~$0.000026/GB-s on-demand + $0.40/1M, citing the official Functions pricing page and learn.microsoft.com consumption-costs docs. B wins — A appears to have copied the classic Consumption GB-s rate into Flex; both agree on the $0.000004 always-ready baseline and the 250K/100K grant. Rate is region-dependent; unverified live (fetch timed out).",
+        "AWS NAT idle monthly floor: A ~$32.40 (720 hr) vs B ~$32.85 (730 hr) — same official $0.045/hr rate, hours-per-month convention only; not a real disagreement.",
+        "S3 free tier on new accounts: A asserts the classic 5 GB S3 offer is legacy-only (new accounts draw from credits); B hedges ('often 5 GB', verify in console). Merged as A's version since A cites the AWS billing free-tier doc; flagged as low-confidence.",
+        "Only in one report (kept, not contradicted): A's GCP Standard-tier 200 GiB/mo free egress and Cloud Run functions grants; B's Cloud Run instance-based free tier (240K vCPU-s/450K GiB-s), T4g free trial until 2026-12-31, and Azure Container Apps free slice."
+      ],
+      "sources": [
+        "https://aws.amazon.com/free/",
+        "https://aws.amazon.com/blogs/aws/aws-free-tier-update-new-customers-can-get-started-and-explore-aws-with-up-to-200-in-credits/",
+        "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/billing-free-tier.html",
+        "https://aws.amazon.com/lambda/pricing/",
+        "https://aws.amazon.com/s3/pricing/",
+        "https://aws.amazon.com/ec2/pricing/on-demand/",
+        "https://aws.amazon.com/vpc/pricing/",
+        "https://cloud.google.com/free/docs/free-cloud-features",
+        "https://cloud.google.com/run/pricing",
+        "https://cloud.google.com/vpc/network-pricing",
+        "https://cloud.google.com/network-tiers/pricing",
+        "https://azure.microsoft.com/en-us/free/",
+        "https://azure.microsoft.com/en-us/pricing/details/functions/",
+        "https://azure.microsoft.com/en-us/pricing/details/bandwidth/",
+        "https://learn.microsoft.com/en-us/azure/azure-functions/functions-consumption-costs",
+        "https://learn.microsoft.com/en-us/azure/cost-management-billing/manage/avoid-charges-free-account"
+      ]
+    },
+    {
+      "provider": "Neon (serverless Postgres, neon.com — formerly neon.tech; Databricks-owned)",
+      "billing_dimensions": [
+        "compute: CU-hours (1 CU ~= 1 vCPU/4 GB RAM; billed only while running, scale-to-zero = $0; every branch compute and each read replica counts)",
+        "storage (root branches): GB-month, metered hourly, full logical size",
+        "storage (child branches): GB-month, copy-on-write — min(delta, logical size)",
+        "instant restore / history (WAL retention): GB-month",
+        "snapshot storage (manual + scheduled): GB-month",
+        "public network egress: GB above included allowance",
+        "private network transfer (Scale only): GB, bidirectional",
+        "extra branches beyond plan allowance: branch-month, prorated hourly (~$0.002/branch-hour)",
+        "NOT billed: queries/requests, connections, seats/members, projects within limits; invoices under $0.50 not collected"
+      ],
+      "free_tier": "$0, no card, permanent (not a trial). Per org: 100 projects. Per project: 100 CU-hours compute/month (resets monthly), 0.5 GB storage, 10 branches (hard cap), autoscaling max 2 CU (8 GB RAM), autosuspend fixed at 5 min idle (cannot disable), instant restore 6 h (max 1 GB history), 1 manual snapshot, 1-day monitoring retention. 5 GB public egress/month. Enforcement: exceeding CU-hours or egress SUSPENDS compute until next billing month (no overage billing — dead DB); exceeding 0.5 GB storage makes writes (INSERT/UPDATE/DELETE) fail while reads keep working; data is never deleted. Auth: up to 60k MAU. Community support only.",
+      "plans": [
+        {
+          "name": "Free",
+          "price": "$0/mo",
+          "included": "100 projects; per project: 100 CU-hrs/mo, 0.5 GB storage, 10 branches, 2 CU max, 5-min forced autosuspend, 6 h restore; 5 GB egress/mo; 60k MAU auth",
+          "overage": "None — hard caps: compute/egress overrun suspends compute until next month; storage overrun fails writes"
+        },
+        {
+          "name": "Launch",
+          "price": "$0 base, pure pay-as-you-go (no monthly minimum since Dec 2025)",
+          "included": "100 projects; 10 branches/project (max 5,000); autoscale to 16 CU (64 GB RAM); autosuspend default 5 min, CAN be disabled; instant restore up to 7 days; 100 manual + scheduled snapshots; 500 GB egress; 1M MAU auth; 3-day monitoring; spend limits (alerts ~80%/100%)",
+          "overage": "$0.106/CU-hr compute; $0.35/GB-mo storage; $0.10/GB egress past 500 GB; $1.50/branch-mo extras; $0.20/GB-mo restore history; $0.09/GB-mo snapshots. Anchors: 0.25 CU always-on ~$19/mo, 1 CU always-on ~$77/mo compute"
+        },
+        {
+          "name": "Scale",
+          "price": "$0 base, pure pay-as-you-go (no monthly minimum)",
+          "included": "1,000 projects (soft); 25 branches/project; autoscale to 16 CU, fixed computes to 56 CU (224 GB RAM); autosuspend configurable 1 min → always-on; instant restore up to 30 days; 500 GB egress; 99.95% SLA, SOC 2, HIPAA (BAA), SSO, IP Allow, Private Link at no platform fee; 14-day monitoring + metrics/logs export",
+          "overage": "$0.222/CU-hr compute (2.1x Launch); $0.35/GB-mo storage; $0.10/GB egress past 500 GB; $0.01/GB private networking (bidirectional); $1.50/branch-mo extras; $0.20/GB-mo restore; $0.09/GB-mo snapshots. 1 CU always-on ~$162/mo"
+        },
+        {
+          "name": "Agent plan (for platforms provisioning DBs for end users, e.g. Replit/v0 model)",
+          "price": "Apply at neon.com/programs/agents; requires Scale org with card on file",
+          "included": "Sponsored free org (Neon pays for your free-tier users, ~Free-plan limits per project, 30k projects default) + paid org at $0.106/CU-hr with Scale features; up to ~$25k-30k starting credits",
+          "overage": "$0.106/CU-hr on the paid org"
+        }
+      ],
+      "first_quota_blown": "Free plan: the 100 CU-hours/project/month compute budget. A chatty agent (polling, health checks, held-open connection pools) resets the 5-min idle timer so compute never suspends -> effectively always-on. At the 0.25 CU floor that burns 100 CU-hrs in ~400 h (~16-17 days); if autoscaling drifts to 0.5-1 CU, ~4-8 days. Then the project is hard-suspended until next month. Second: 5 GB egress (big SELECT dumps, embeddings export, pg_dump, logical replication) — also suspends compute. Third: 0.5 GB storage from chat history/vector tables — writes start failing. On paid plans the same pattern becomes a silent bill instead (~$77/mo per always-on CU on Launch).",
+      "sweet_spots": "Free: prototypes, demos, per-test/per-preview DBs, side projects that truly idle (scale-to-zero makes 100 CU-hrs plenty). Launch: early production/startups, variable traffic, want always-on option — no cliff, just usage billing; official examples ~$2.31 light / ~$23 medium / ~$48 heavier per month. Scale: production needing SLA/SOC 2/HIPAA/private networking/>16 CU fixed computes or >10 branches per project — only move for the features, since compute is 2.1x Launch's rate.",
+      "traps": [
+        "Polling/health-check/cron loops defeat the 5-min autosuspend — any query resets the idle timer; a 1-min cron = 24/7 compute. #1 trap: Free dies mid-month, Launch silently accrues ~$77/mo per always-on CU",
+        "Held-open connection pools / idle clients block scale-to-zero even without queries — use short pool timeouts and Neon's pooled endpoint",
+        "Disabling scale-to-zero 'to fix cold starts' during debugging and leaving it off (Launch/Scale)",
+        "Per-PR/per-test branch sprawl: branch #11+ (Launch) / #26+ (Scale) bills $1.50/branch-month each, plus each awake branch compute burns CU-hours and child storage grows — set branch TTL, delete after CI",
+        "Forgotten projects keep billing $0.35/GB-month storage forever at zero compute",
+        "Outbound logical replication: publisher compute never scales to zero while subscribers are connected, and replication traffic counts as egress",
+        "Egress from chatty reads: SELECT *, full-table exports to agent context, vector scans returning whole documents, frequent pg_dump — Free suspends at 5 GB; paid $0.10/GB past 500 GB (prefer in-platform snapshots, which are not egress)",
+        "Autoscaling spikes: parallel agent queries scale compute toward the 2/16 CU cap and CU-hours bill at the scaled size, not the floor",
+        "Long instant-restore windows (7/30 days) on write-heavy/churny agent DBs bill $0.20/GB-month on WAL volume",
+        "Read replicas are full extra computes billing their own CU-hours",
+        "Mitigation: set org spend limits (Launch/Scale, alerts at ~80%/100%), cap autoscaling max CU, keep autosuspend at 5 min (1 min on Scale) for agent workloads"
+      ],
+      "usage_check": "Dashboard: https://console.neon.tech -> Organization -> Billing (charges to date; note network transfer only surfaces there after exceeding the included allowance) and Org -> Projects page for per-project Compute/Storage/History/Network metrics (~1 h lag). API (paid plans): GET https://console.neon.tech/api/v2/consumption_history/v2/projects?from=<RFC3339>&to=<RFC3339>&granularity=hourly|daily|monthly&org_id=<org>&metrics=compute_unit_seconds,root_branch_bytes_month,child_branch_bytes_month,instant_restore_bytes_month,snapshot_storage_bytes_month,public_network_transfer_bytes,extra_branches_month with Authorization: Bearer $NEON_API_KEY (per-branch variant: .../v2/branches, requires project_ids; poll >= ~15 min, does not wake compute). CLI (neon / alias neonctl): NO usage/billing command — use `neon projects list` / `neon branches list` to find forgotten resources, console or API for spend.",
+      "keywords": [
+        "neonctl",
+        "neon projects",
+        "neon branches",
+        "neon connection-string",
+        "neon auth",
+        "npx neonctl",
+        "neon.tech",
+        "console.neon.tech",
+        "@neondatabase",
+        "neondatabase",
+        "neon_api_key",
+        "neon_project_id",
+        "ep-",
+        "-pooler.",
+        "aws.neon.tech",
+        "claimable postgres"
+      ],
+      "hint": "Neon free/project: 100 CU-hr/mo, 0.5GB storage, 5GB egress; compute/egress overrun SUSPENDS DB till next month. Polling defeats 5-min autosuspend: 0.25CU always-on kills quota in ~17d. Paid: $0.106/CU-hr, $0.35/GB-mo, $0 base; set spend limit.",
+      "conflicts": [
+        "Scheduled snapshots on Launch: Report A implied scheduled snapshots ($0.09/GB-mo) were Scale-only (listed 100 manual snapshots for Launch); Report B said Launch gets manual + scheduled. Official neon.com/pricing (fetched 2026-07-17) confirms scheduled snapshots on BOTH Launch and Scale at $0.09/GB-month — B wins.",
+        "1 CU always-on Launch compute cost: A says ~$78/mo, B says ~$77/mo — pure rounding of 730 h x $0.106 = $77.38; used ~$77.",
+        "Report A's '0.25 CU floor = ~186 CU-hours/month' is a small arithmetic slip (730 x 0.25 = 182.5); both reports agree on the load-bearing figure of ~400 h / ~16-17 days to exhaust the Free 100 CU-hrs, so A's 186 was dropped.",
+        "All headline numbers (rates, quotas, caps, no-minimum) matched between both reports and were re-verified live against https://neon.com/pricing."
+      ],
+      "sources": [
+        "https://neon.com/pricing (re-verified via WebFetch 2026-07-17)",
+        "https://neon.com/docs/introduction/plans",
+        "https://neon.com/faqs/free-plan-limits-and-quotas",
+        "https://neon.com/docs/introduction/cost-optimization",
+        "https://neon.com/docs/introduction/monitor-usage",
+        "https://neon.com/docs/guides/consumption-metrics",
+        "https://neon.com/docs/introduction/usage-calculations",
+        "https://neon.com/docs/introduction/spending-limit",
+        "https://neon.com/docs/changelog/2025-12-12 ($5 minimum removed; Launch cut to $0.106/CU-hr)",
+        "https://neon.com/blog/new-usage-based-pricing",
+        "https://neon.com/docs/introduction/agent-plan and https://neon.com/programs/agents",
+        "https://neon.com/docs/cli and https://neon.com/docs/reference/neon-cli"
+      ]
+    },
+    {
+      "provider": "Railway",
+      "billing_dimensions": [
+        "CPU: $20/vCPU/mo ($0.000463/vCPU/min), billed per-minute while service runs (idle or not)",
+        "Memory: $10/GB/mo ($0.000231/GB/min)",
+        "Volume (persistent disk): $0.15/GB/mo",
+        "Network egress from services: $0.05/GB (ingress free; private-network traffic between services free)",
+        "Object storage (Buckets): $0.015/GB-month, rounded UP to whole GB-months; S3 ops and bucket egress free",
+        "Railway Agent: LLM tokens passed through at Anthropic rates, drawn from same credit pool; default spend caps $5 (Hobby) / $20 (Pro), cannot be fully removed",
+        "Seats: Pro is $20/mo per seat (official pricing page wording)",
+        "NOT billed: HTTP requests, S3 API ops, bucket egress; builds/PR envs/replicas consume the same compute meters"
+      ],
+      "free_tier": "Two stages. TRIAL (new signups, no card): one-time $5 credit, expires after ~30 days. Limits: 2 vCPU (shared) / 1 GB RAM / 2 replicas / 0.5 GB volume / 1 GB ephemeral / 4 GB image, 5 services/project, 3 buckets/project, 50 GB-month bucket max; unverified GitHub = Limited Trial (restricted outbound network, no buckets); trial volumes DELETED 30 days after credit expiry. FREE PLAN (post-trial, reinstated Aug 2025): $1/mo credit, non-rolling. Limits: 1 vCPU / 0.5 GB RAM / 1 replica / 0.5 GB volume / 1 GB ephemeral / 4 GB image, 1 bucket (10 GB-month), API rate limit 100 req/h. When $1 is spent, workloads stop and bucket access suspends (files kept) until next cycle. Reality: 0.5 GB always-on RAM alone ≈ $5/mo = 5x the credit — Free only fits a sleep-heavy serverless toy.",
+      "plans": [
+        {
+          "name": "Free",
+          "price": "$0/mo",
+          "included": "$1/mo resource credit (non-rolling); 1 vCPU, 0.5 GB RAM, 1 replica, 0.5 GB volume, 1 bucket (10 GB-mo)",
+          "overage": "none — workloads stop when the $1 is spent"
+        },
+        {
+          "name": "Hobby",
+          "price": "$5/mo (charged even if usage is lower; bill = max($5, usage))",
+          "included": "$5/mo usage credit; per-service caps 48 vCPU / 48 GB RAM, 6 replicas, 5 GB volume (self-serve), 100 GB ephemeral, single-developer workspace",
+          "overage": "$20/vCPU-mo, $10/GB-RAM-mo, $0.15/GB-mo volume, $0.05/GB egress, $0.015/GB-mo buckets"
+        },
+        {
+          "name": "Pro",
+          "price": "$20/mo per seat (official pricing page: \"per seat\")",
+          "included": "$20/mo usage credit; 1,000 vCPU / 1 TB RAM caps, 42 replicas, volumes to 1 TB self-serve, 30-day logs, higher API limits (10,000 req/h)",
+          "overage": "same metered unit rates as Hobby; annual committed-spend discounts available"
+        },
+        {
+          "name": "Enterprise",
+          "price": "custom (third-party reports ~$2,000/mo minimum; unverified)",
+          "included": "custom; ~2,400 vCPU / 2.4 TB RAM / 50 replicas / 5 TB volumes, SSO, SLAs",
+          "overage": "custom"
+        }
+      ],
+      "first_quota_blown": "The included usage credit, not a hard resource cap. On Hobby, a typical agent stack (web app + Postgres, ~1-2 GB RAM total always-on) runs ~$15-25/mo metered, so the $5 credit is exhausted in under a week and real overage billing begins; RAM is usually the dominant meter ($10/GB-mo — 2x1 GB always-on ≈ $20/mo before CPU). On Free, the $1/mo credit dies in hours-to-days (0.5 GB always-on ≈ $5/mo). On Trial, the $5 one-time credit lasts ~5-10 days of an always-on app+DB. Second walls: public-URL DB egress at $0.05/GB, then PR/preview environments multiplying the whole stack, then Hobby's hard 5 GB volume cap.",
+      "sweet_spots": "Trial: weekend demos only. Free: one sleep-heavy serverless toy endpoint (no always-on anything, 0 custom domains). Hobby ($5): solo dev with ONE small always-on service (~0.1 vCPU/256 MB ≈ $4.50/mo fits inside credit) or several serverless-slept services; app+DB pushes to ~$15-25/mo real spend. Pro ($20/seat): teams, staging+prod, PR previews, bigger volumes (1 TB vs Hobby's 5 GB hard cap), 10k req/h API limits; the $20 credit roughly covers one small always-on service, real agent stacks land $25-80+/mo.",
+      "traps": [
+        "Idle services bill per-minute regardless of traffic — a forgotten 1 vCPU/1 GB service costs ~$30/mo; enable Serverless (scale-to-zero) in Settings > Deploy",
+        "Polling loops and health-check pingers defeat Serverless sleep entirely, keeping CPU/RAM billing continuous",
+        "Connecting to your own DB via its public URL bills $0.05/GB egress — use the private *.railway.internal hostname (free)",
+        "PR/preview environments duplicate every service and bill separately: 3 open PRs with full stack ≈ 4x baseline; agents that auto-open PRs multiply compute",
+        "Service-to-bucket uploads pay service egress ($0.05/GB) even though bucket egress is free — buckets sit on the public network",
+        "Railway Agent LLM tokens drain the same credit pool (default caps $5 Hobby / $20 Pro); sandboxes are full VMs billed while RUNNING and agents forget them",
+        "Bucket GB-months round UP per bucket (5.1 -> 6), so many tiny test buckets each add rounded charges",
+        "Hard usage limit (minimum $10) takes ALL workloads offline when hit and suspends bucket reads; set the lower email soft alert too (alerts at 75/90/100%)",
+        "Trial volumes are deleted 30 days after the trial credit expires; Free-plan workloads stop mid-cycle when the $1 credit runs out",
+        "Memory leaks directly raise the bill since RAM bills on usage ($10/GB-mo)"
+      ],
+      "usage_check": "Dashboard (primary): https://railway.com/workspace/usage — current + estimated billing-period spend per project/resource, and where soft/hard limits are set; billing at https://railway.com/workspace/billing. No CLI usage/spend command exists (railway status/logs/metrics cover ops only). API: POST https://backboard.railway.com/graphql/v2 with header 'Authorization: Bearer <token>' (account token from Settings > Tokens; env vars RAILWAY_TOKEN / RAILWAY_API_TOKEN) — introspectable schema includes usage/estimatedUsage queries with measurements like CPU_USAGE, MEMORY_USAGE_GB, NETWORK_TX_GB.",
+      "keywords": [
+        "railway",
+        "railway up",
+        "railway login",
+        "railway link",
+        "railway init",
+        "railway run",
+        "railway deploy",
+        "railway logs",
+        "railway variables",
+        "railway service",
+        "railway agent",
+        "railway metrics",
+        "railway whoami",
+        "railway.app",
+        "up.railway.app",
+        "railway.com",
+        "railway.internal",
+        "backboard.railway",
+        "railway_token",
+        "railway_api_token",
+        "railway_environment",
+        "railway_project_id",
+        "railway_public_domain",
+        "railway_private_domain",
+        "database_public_url",
+        "railway.json",
+        "railway.toml",
+        "nixpacks",
+        "railpack"
+      ],
+      "hint": "Railway bills idle compute per-minute: $20/vCPU-mo, $10/GB-RAM-mo, $0.05/GB egress. Free=$1/mo credit (0.5GB always-on≈$5/mo, dead in days); Hobby $5 credit gone <1wk with app+DB. Enable Serverless sleep; use *.railway.internal for DB.",
+      "conflicts": [
+        "Pro seat pricing: Report A said $20/mo per seat; Report B said flat $20/mo with unlimited $0 seats. WebFetch of the official pricing page (railway.com/pricing) returned the exact wording 'Pro: $20/month per seat' — Report A wins. B was likely misled by docs.railway.com/pricing/plans, which shows 'Pro $20/month' without seat wording.",
+        "Enterprise minimum price: A cited ~$2,000/mo from third-party reports; B cited only feature spend-unlocks (~$1k HIPAA, ~$2k SSO). Neither is an official plan price — recorded as custom/unverified, unresolved.",
+        "Free-plan structural limits (1 project, 3 services/project, 10-min build timeout, 3-day logs, 0 custom domains) and Trial extras (5 projects, 20-min builds, 7-day logs) appear only in Report B; A neither confirms nor contradicts, and B cites the official plans page — included but single-sourced.",
+        "Free-plan API rate limit 100 req/h and Pro 10,000 req/h / 50 RPS appear only in Report A (cited to docs) — included but single-sourced."
+      ],
+      "sources": [
+        "https://railway.com/pricing",
+        "https://docs.railway.com/pricing",
+        "https://docs.railway.com/pricing/plans",
+        "https://docs.railway.com/pricing/free-trial",
+        "https://docs.railway.com/pricing/understanding-your-bill",
+        "https://docs.railway.com/pricing/cost-control",
+        "https://docs.railway.com/pricing/faqs",
+        "https://docs.railway.com/storage-buckets/billing",
+        "https://docs.railway.com/projects/project-usage",
+        "https://docs.railway.com/integrations/api",
+        "https://docs.railway.com/cli",
+        "https://blog.railway.com/p/free-plan",
+        "https://railway.com/workspace/usage"
+      ]
+    },
+    {
+      "provider": "Supabase",
+      "billing_dimensions": [
+        "plan subscription (per ORGANIZATION, not per project; no seats — Team $599 is flat)",
+        "compute hours: dedicated Postgres per ACTIVE project, billed hourly with partial hours rounded UP; Nano free on Free plan but billed at Micro rate (~$10/mo) on paid orgs; Micro $0.01344/hr (~$10/mo) up to 16XL $5.12/hr (~$3,730/mo); paused projects bill $0; NOT covered by Spend Cap",
+        "disk size: 8 GB included per project (paid), then gp3 $0.125/GB-mo; io2 $0.195/GB-mo from first byte; does not auto-shrink",
+        "disk IOPS/throughput: 3,000 IOPS + 125 MB/s included (gp3), then $0.024/IOPS, $0.095/MB-s",
+        "egress (uncached, unified across DB/Auth/Storage/Realtime/Functions/Supavisor): $0.09/GB overage",
+        "cached egress (Storage CDN hits, separate quota since Jul 2025): $0.03/GB overage",
+        "file storage: $0.0213/GB-mo overage",
+        "Auth MAU: $0.00325/MAU overage; third-party MAU billed similarly; SSO MAU $0.015/MAU over 50 (Pro+)",
+        "Edge Function invocations: $2 per 1M overage (OPTIONS free; failed invokes count)",
+        "Realtime messages: $2.50 per 1M overage; Realtime peak concurrent connections: $10 per 1,000 overage",
+        "branching compute: each preview/persistent branch is its own hourly instance from $0.01344/hr + disk/egress; NOT covered by compute credits or Spend Cap",
+        "read replica compute: hourly like a project",
+        "image transforms: $5 per 1,000 origin images over 100 (Pro)",
+        "add-ons (flat/hourly per project): PITR ~$100/mo per 7d retention, custom domain $10/mo, IPv4 ~$4/mo ($0.0055/hr), Advanced MFA phone $75/mo first project then $10, log drains $60/drain/mo + $0.20/M events + $0.09/GB, pipelines $39/mo + $3/GB replicated",
+        "NOT metered: Data API request count (unlimited on all plans)"
+      ],
+      "free_tier": "$0/mo. 2 ACTIVE projects (paused don't count; pricing page says 'Limit of 2 active projects'). Projects AUTO-PAUSE after 7 days of inactivity, manual restore only. Nano-class shared compute (~500 MB RAM). 500 MB database per project. 50,000 Auth MAU (+50k third-party MAU). 5 GB egress + 5 GB cached egress/mo. 1 GB file storage, 50 MB max upload. 500,000 Edge Function invocations/mo. Realtime: 200 peak concurrent connections, 2M messages/mo (256 KB max message). No backups/PITR/branching; 1-day log retention; unlimited API requests; unlimited team members. Over quota: email warning (within ~20% of limits) + grace period, then requests rejected with 402 until next cycle or upgrade.",
+      "plans": [
+        {
+          "name": "Free",
+          "price": "$0/mo per org",
+          "included": "2 active projects (7-day inactivity auto-pause), Nano compute, 500 MB DB/project, 50k MAU, 5 GB egress + 5 GB cached, 1 GB storage (50 MB uploads), 500k edge invocations, 200 realtime conns / 2M msgs, 1-day logs, no backups",
+          "overage": "None — grace period then 402 rejections until upgrade/next cycle"
+        },
+        {
+          "name": "Pro",
+          "price": "$25/mo per org",
+          "included": "$10/mo compute credits (covers exactly ONE Micro instance; no rollover; not applicable to branches), 100k MAU, 8 GB disk/project, 250 GB egress + 250 GB cached, 100 GB storage (500 GB max upload), 2M edge invocations, 500 realtime peak conns / 5M msgs, 50 SSO MAU, 100 image transforms, daily backups 7d, 7-day logs, no pausing, Spend Cap ON by default",
+          "overage": "MAU $0.00325; disk $0.125/GB; egress $0.09/GB; cached egress $0.03/GB; storage $0.0213/GB; edge $2/1M; realtime $2.50/1M msgs, $10/1k conns; SSO MAU $0.015; transforms $5/1k; extra project compute ~$10+/mo each (Micro $0.01344/hr, hours rounded up) — compute/disk/branching NOT blocked by Spend Cap"
+        },
+        {
+          "name": "Team",
+          "price": "$599/mo per org",
+          "included": "Same usage quotas/overage rates as Pro + SOC2 & ISO 27001, HIPAA add-on path, SSO for dashboard, project-scoped/read-only roles, 14-day backups, 28-day logs, priority support/SLAs, AWS PrivateLink",
+          "overage": "Same rates as Pro"
+        },
+        {
+          "name": "Enterprise",
+          "price": "Custom",
+          "included": "Custom quotas, SLAs, BYO cloud, 24x7 support",
+          "overage": "Custom"
+        }
+      ],
+      "first_quota_blown": "Free plan: the 7-day inactivity AUTO-PAUSE kills 'deploy and forget' agent apps before any quota is touched (restore is manual). Next: 500 MB DB (~50-70k pgvector 1536-dim rows fills it) or the 2-active-project cap on the agent's 3rd project. On Pro the first real dollar surprise is compute: every extra project or forgotten branch is its own ~$10/mo (Micro, $0.01344/hr rounded up) instance, uncapped by Spend Cap — 10 stale branches ≈ $100/mo.",
+      "sweet_spots": "Free: prototypes/demos with <500 MB data and traffic most days (to dodge the 7-day pause); fine for 1-2 toy apps. Pro $25: one small-to-mid production app; $25 all-in only at 1 Micro project inside quotas — realistic bill with 2-3 always-on projects is $35-$75 before overages (each extra Micro +$10/mo). Team $599: buy for compliance/SSO/RBAC, not usage. Enterprise: scale/custom SLAs.",
+      "traps": [
+        "Spend Cap illusion: cap only gates metered items (egress, MAU, edge, storage, realtime); COMPUTE, DISK, BRANCHING, read replicas, and add-ons (IPv4, PITR, custom domain) bill without limit even with the cap on",
+        "Per-test provisioning: every `supabase projects create` on a paid org = new instance ≥$10/mo (Nano billed at Micro rate); every branch = $0.01344/hr; compute credits cover only ONE Micro — delete/pause after tests",
+        "Round-up hourly billing: a branch/project alive 5 minutes bills a full hour; branch-per-PR CI stacks up",
+        "Free-tier zombie: 7-day inactivity pause silently breaks deployed-and-forgotten demos; restore is manual",
+        "Disk ratchet: autoscaled disk never shrinks automatically; a bulk-load spike keeps billing $0.125/GB-mo until manually reduced",
+        "Polling loops: fat SELECTs/REST polls burn unified egress (100 KB polled every 5s ≈ 2.5 GB/mo per loop vs 5 GB free); use narrow selects, counts, or Realtime",
+        "Storage without CDN cache (cache-busting params, private buckets) pays $0.09/GB uncached instead of $0.03/GB cached",
+        "Auth in tests: each distinct/anonymous user authenticating in a cycle is an MAU; throwaway test users chew the 50k/100k quota",
+        "Edge Functions as agent runtime: every tool call = 1 invocation; 1 invoke per 5s ≈ 500k/mo = entire free quota (cheap overage though: $2/1M)",
+        "Vector/chat history without retention: embeddings + agent traces fill 500 MB free / 8 GB Pro disk far faster than normal CRUD",
+        "Log drains and log queries count as egress/metered usage too"
+      ],
+      "usage_check": "Dashboard (authoritative): https://supabase.com/dashboard/org/_/usage and .../org/_/billing (Upcoming Invoice, Spend Cap toggle). No `supabase billing`/`supabase usage` CLI exists — closest: `supabase projects list`, `supabase inspect db table-sizes|bloat`. Management API: `curl -H \"Authorization: Bearer sbp_...\" https://api.supabase.com/v1/projects` (v0 analytics endpoints like /v0/projects/{ref}/analytics/endpoints/usage.api-counts are experimental). DB size via SQL: select pg_size_pretty(pg_database_size('postgres')); Supabase emails the billing contact when within 20% of plan limits.",
+      "keywords": [
+        "supabase",
+        "npx supabase",
+        "supabase start",
+        "supabase db push",
+        "supabase functions deploy",
+        "supabase projects create",
+        "supabase branches",
+        "supabase link",
+        "supabase migration",
+        "supabase gen types",
+        ".supabase.co",
+        "api.supabase.com",
+        "pooler.supabase.com",
+        "supabase_url",
+        "supabase_anon_key",
+        "supabase_service_role_key",
+        "supabase_access_token",
+        "next_public_supabase",
+        "@supabase/supabase-js",
+        "@supabase/ssr",
+        "sbp_",
+        "postgrest",
+        "pgrst",
+        "supavisor",
+        "gotrue",
+        "service_role",
+        "storage.from(",
+        "project-ref"
+      ],
+      "hint": "Supabase free: 2 active projects, AUTO-PAUSES after 7 idle days, 500MB DB, 5GB egress, 50k MAU, 500k edge invokes. Pro $25 covers ONE Micro ($10 credit); every extra project/branch bills ~$10/mo compute that Spend Cap does NOT block — delete test projects/branches.",
+      "conflicts": [
+        "File storage overage: Report A said $0.021/GB, Report B said $0.0213/GB — live fetch of https://supabase.com/pricing (2026-07-17) confirms $0.0213/GB; B wins",
+        "Free 2-active-project scope: A said per organization, B said across all orgs where the user is Owner/Admin — pricing page only says 'Limit of 2 active projects' (per-org reading confirmed by the fetched page section); B's cross-org nuance matches billing docs but is unresolved from the pricing page alone",
+        "Report B alone lists add-on prices (PITR ~$100/7d, custom domain $10, IPv4 ~$4, MFA $75, log drains $60, pipelines $39), image transforms (100 incl / $5 per 1k), SSO MAU (50 incl / $0.015) and 256 KB realtime message cap — image transforms and SSO MAU verified against the live pricing page; add-on prices kept from B unverified but uncontested",
+        "Report A alone gives io2 disk $0.195/GB-mo, over-quota 402 behavior, and the July 2025 cached-egress split — uncontested, kept with A's official doc URLs"
+      ],
+      "sources": [
+        "https://supabase.com/pricing (fetched live 2026-07-17 to break ties)",
+        "https://supabase.com/docs/guides/platform/billing-on-supabase",
+        "https://supabase.com/docs/guides/platform/manage-your-usage/compute",
+        "https://supabase.com/docs/guides/platform/manage-your-usage/disk-size",
+        "https://supabase.com/docs/guides/platform/manage-your-usage/branching",
+        "https://supabase.com/docs/guides/platform/manage-your-usage/egress",
+        "https://supabase.com/docs/guides/platform/cost-control",
+        "https://supabase.com/docs/guides/platform/billing-faq",
+        "https://supabase.com/docs/guides/functions/pricing",
+        "https://supabase.com/docs/guides/platform/manage-your-usage/monthly-active-users",
+        "https://supabase.com/blog/storage-500gb-uploads-cheaper-egress-pricing",
+        "https://supabase.com/docs/reference/cli/introduction",
+        "https://supabase.com/docs/reference/api/introduction"
+      ]
+    },
+    {
+      "provider": "Vercel",
+      "billing_dimensions": [
+        "edge requests (CDN requests, every request incl. static)",
+        "edge request CPU duration (routing CPU, $/hr)",
+        "fast data transfer (CDN<->visitor egress, both directions)",
+        "fast origin transfer (CDN<->functions/blob/ISR, both directions)",
+        "function invocations",
+        "active CPU (CPU-hrs, pauses during I/O)",
+        "provisioned memory (GB-hrs, bills through I/O waits)",
+        "ISR reads/writes (8 KB units, regional)",
+        "runtime cache reads/writes (8 KB units)",
+        "image transformations + image cache reads/writes",
+        "build CPU-minutes (Elastic/Enhanced/Turbo or on-demand concurrency)",
+        "blob (storage GB-mo, simple/advanced ops, transfer)",
+        "edge config reads/writes",
+        "sandbox (active CPU, memory GB-hrs, creations, network GB, snapshot storage)",
+        "deploying seats ($20/mo each; viewers free)",
+        "web analytics / speed insights / observability events",
+        "drains ($/GB)",
+        "workflow events + data written/retained",
+        "WAF rate limiting / OWASP inspection",
+        "queues + service requests (beta SKUs)",
+        "fixed DX add-ons (SAML, HIPAA, static IPs, etc.)"
+      ],
+      "free_tier": "Hobby $0, non-commercial only; hard caps — exceeded feature pauses/402s until 30-day window resets, no overage billing. Monthly: 1M edge requests; 1M function invocations; 4 active-CPU-hrs; 360 GB-hrs provisioned memory; 100 GB fast data transfer; 10 GB fast origin transfer; 1M ISR reads / 200K ISR writes (8 KB units); 5K image transformations, 300K/100K image cache reads/writes; 100K/100 edge config reads/writes; blob 1 GB storage, 10K simple + 2K advanced ops, 10 GB transfer; 50K web analytics events; 10K speed insights events (1 project); sandbox 5 CPU-hrs, 420 GB-hrs memory, 5K creations, 20 GB network, 10 concurrent, 45-min max runtime. Platform limits: 100 deployments/day, 200 projects, 1 concurrent build, 45-min max build, 300 s max function duration, 50 domains/project, 1-hr log retention. No monthly build-minute meter exists (old '6,000 build minutes' numbers are stale).",
+      "plans": [
+        {
+          "name": "Hobby",
+          "price": "$0/mo",
+          "included": "Quotas above; non-commercial only; hard caps with ~30-day pause on overage",
+          "overage": "None — feature pauses or returns 402 until cycle resets"
+        },
+        {
+          "name": "Pro",
+          "price": "$20/mo platform fee (includes 1 deploying seat) + $20/mo usage credit (expires monthly); extra deploying seats $20/mo; viewer seats free; 14-day trial",
+          "included": "10M edge requests + 1 TB fast data transfer per month; everything else is pure on-demand drawn against the $20 credit first. Limits: unlimited projects, 6,000 deploys/day, function duration 300 s default / 800 s max (1,800 s beta), up to 500 concurrent builds on-demand, build machines to 30 vCPU/60 GB, 2,000 concurrent sandboxes (24 h max runtime), 1-day log retention",
+          "overage": "On-demand, regional (cheapest US iad1/cle1/pdx1): invocations $0.60/1M; active CPU $0.128–0.221/CPU-hr; provisioned memory $0.0106–0.0183/GB-hr; edge requests $2.00–3.20/1M; edge request CPU $0.30–0.48/hr; FDT $0.15–0.35/GB; FOT $0.06–0.43/GB; ISR reads $0.40–0.64/1M units, writes $4.00–6.40/1M units; image transforms $0.05–0.0812/1K, cache reads $0.40–0.64/1M, writes $4.00–6.40/1M; builds $0.0035/CPU-min (rounded up per min x vCPUs; Elastic is DEFAULT for new Pro teams so builds bill by default; Standard=4 vCPU/8GB, Enhanced=8/16, Turbo=30/60); blob storage $0.023–0.041/GB-mo, simple ops $0.35–0.56/1M, advanced $4.50–7.00/1M, transfer $0.05–0.117/GB; sandbox CPU $0.128/hr, memory $0.0212/GB-hr, creations $0.60/1M, network $0.15/GB, snapshots $0.08/GB-mo; web analytics $0.03/1K (0 included); observability plus $1.20/1M; drains $0.50/GB; edge config reads $3.00/1M, writes $5.00 (per docs/pricing). Add-ons: Speed Insights $10/project, Web Analytics Plus $10, Preview Suffix $100, Adv. Deployment Protection $150, Flags Explorer $250, SAML $300, HIPAA $350, Static IPs $100/project"
+        },
+        {
+          "name": "Enterprise",
+          "price": "Custom (unofficially ~$25k+/yr entry)",
+          "included": "Custom quotas, 99.99% SLA, multi-region, SCIM, managed WAF, custom concurrency",
+          "overage": "Negotiated"
+        }
+      ],
+      "first_quota_blown": "During agent iteration: Hobby 100 deployments/day (push->deploy->fix loops at ~3-4 deploys/hr hit it in a workday; on Pro every push instead bills build CPU-minutes since Elastic is default). Once the app serves traffic: Provisioned Memory 360 GB-hrs — it bills through I/O waits, so a 2 GB instance kept warm by polling or 30-60 s LLM streams burns 360 GB-hrs in ~180 instance-hours (~6 hrs/day); 1M invocations + 1M edge requests fall next (8 browser tabs polling every 5 s ~= 1.4M req/mo). Smallest absolute quota: 5K image transformations, gone almost immediately on any image-heavy page.",
+      "sweet_spots": "Hobby: personal/demo Next.js, <~30k visitors/mo, light API traffic, strictly non-commercial (fair-use ban on commercial apps is itself the first wall for shipped products). Pro at $20-40/mo: small production SaaS staying near included 10M edge requests + 1 TB FDT with functions/ISR/images covered by the $20 credit; watch $20/seat stacking. Enterprise: compliance/multi-region/negotiated egress — cost not the constraint.",
+      "traps": [
+        "Provisioned Memory bills during I/O waits while Active CPU pauses — long LLM streaming/proxy routes rack GB-hrs with near-zero CPU; this is the signature Vercel-agent cost trap",
+        "Polling loops hit three meters at once (edge requests $2/1M + invocations $0.60/1M + permanently-warm memory); poll-every-2s status endpoint ~= 1.3M req/mo per client",
+        "ISR write storms: short revalidate + non-deterministic output (new Date(), Math.random()) forces a write every revalidation, in 8 KB units at $4+/1M — one 80 KB page = 10 write units",
+        "Every push bills a build on Pro: Elastic machines are the default for new teams, $0.0035/CPU-min rounded UP per minute x vCPUs (4-30); preview deploys count; ~200 commits/day at 2 min on 4 vCPU ~= $5.60/day",
+        "Sandbox leaks: no sandbox.stop() bills memory until timeout (up to 24 h on Pro, ~$2.73+/instance at 8 vCPU/16 GB); per-test sandbox provisioning burns Hobby's 5K creations and 5 CPU-hrs in an afternoon",
+        "Spend Management is a $200 NOTIFICATION by default, not a cap; auto-pause is opt-in, checks run every few minutes, and paused projects never auto-unpause",
+        "Hobby overage = hard stop: image optimization 402s, sandbox creation pauses, ~30-day lockout on the exceeded feature",
+        "Hobby fair-use: commercial apps risk suspension",
+        "Catch-all middleware without a matcher runs on static assets and can double Fast Origin Transfer",
+        "Verbose JSON/streaming/base64 egress bills FDT $0.15-0.35/GB AND FOT $0.06-0.43/GB; unoptimized 3 MB heroes x 30k views ~= 90 GB of Hobby's 100",
+        "Forgotten preview deployments keep accruing edge/transfer/build usage per agent branch",
+        "Regional multipliers: same traffic costs ~1.7x in gru1 ($0.221/CPU-hr) vs iad1 ($0.128)"
+      ],
+      "usage_check": "CLI: `vercel usage` (current cycle), `vercel usage --from 2026-07-01 --to 2026-07-31 --breakdown daily --format json`, `--scope <team>`. Dashboard: https://vercel.com/[team]/~/usage (charts per resource) and https://vercel.com/[team]/~/settings/billing (spend management). API: GET https://api.vercel.com/v1/billing/charges?teamId=...&from=...&to=... with Bearer token (FOCUS JSONL). Spend-management webhook fires at 50/75/100% of set amount.",
+      "keywords": [
+        "vercel",
+        "vc",
+        "vercel deploy",
+        "vercel dev",
+        "vercel build",
+        "vercel logs",
+        "vercel env",
+        "vercel pull",
+        "vercel link",
+        "vercel usage",
+        "vercel whoami",
+        "vercel redeploy",
+        "vercel promote",
+        "vercel rollback",
+        "vercel sandbox",
+        "vercel blob",
+        "vercel edge-config",
+        "vercel crons",
+        "npx vercel",
+        "vercel deploy --prebuilt",
+        "vercel --prod",
+        "next build",
+        "next dev",
+        ".vercel",
+        "vercel.json",
+        "vercel_token",
+        "vercel_org_id",
+        "vercel_project_id",
+        "api.vercel.com",
+        ".vercel.app",
+        "@vercel/sdk",
+        "@vercel/blob",
+        "@vercel/edge-config",
+        "@vercel/sandbox",
+        "@vercel/functions",
+        "@vercel/og",
+        "@vercel/kv",
+        "next/image",
+        "revalidate",
+        "revalidatetag",
+        "revalidatepath",
+        "unstable_cache",
+        "use cache",
+        "fluid compute",
+        "ai gateway",
+        "spend management"
+      ],
+      "hint": "Vercel Hobby (non-commercial): 1M invocations+edge reqs, 360 GB-hr memory, 4 CPU-hr, 100 GB egress, 100 deploys/day, 5K image transforms; caps hard-pause ~30d. #1 trap: polling/LLM streams bill Provisioned Memory during I/O waits. Pro=$20+$20 credit; builds bill by default.",
+      "conflicts": [
+        "Edge Request CPU Duration: Report B claimed Pro includes 1 free hour then $0.30/hr; official regional-pricing page (WebFetch-verified) lists it purely as '1 Hour for $0.30-$0.48' with no included allotment — Report A wins",
+        "Edge Config write pricing: Report B said $1.00 per 100 writes; official docs/pricing lists Edge Config Writes at $5.00 (unit not shown on page) — official page wins on price, exact unit denominator unresolved",
+        "Standard build machine size: Report A said 2 vCPU/8 GB (citing a Hobby comparison table); official managing-builds doc (WebFetch-verified) lists Standard at 4 vCPU/8 GB/32 GB disk — official doc wins",
+        "Build billing default: Report B framed Standard-machine builds as free unless you opt into Elastic/on-demand; Report A said Elastic is the default for new Pro teams so builds bill by default — WebFetch confirmed 'By default, we enable elastic builds for paid teams'; both statements true, A's practical framing wins",
+        "First-quota-blown ranking: A ranked Provisioned Memory #1, B ranked 100 deploys/day #1 — judgment difference, merged as phase-dependent (deploy thrash during iteration, memory once serving traffic)",
+        "Hobby items only in Report B (10 GB fast origin transfer, blob 1GB/10K/2K/10GB, 15 GB snapshot storage, workflow 50K events/1 GB, WAF 1M) — not contradicted by A, kept with B's docs/limits sourcing but single-sourced"
+      ],
+      "sources": [
+        "https://vercel.com/pricing",
+        "https://vercel.com/docs/pricing (fetched 2026-07-17, last_updated 2026-06-16)",
+        "https://vercel.com/docs/pricing/regional-pricing (fetched 2026-07-17)",
+        "https://vercel.com/docs/builds/managing-builds (fetched 2026-07-17, last_updated 2026-06-24)",
+        "https://vercel.com/docs/plans/hobby",
+        "https://vercel.com/docs/plans/pro-plan",
+        "https://vercel.com/docs/limits",
+        "https://vercel.com/docs/functions/usage-and-pricing",
+        "https://vercel.com/docs/manage-cdn-usage",
+        "https://vercel.com/docs/incremental-static-regeneration/limits-and-pricing",
+        "https://vercel.com/docs/image-optimization/limits-and-pricing",
+        "https://vercel.com/docs/sandbox/pricing",
+        "https://vercel.com/docs/spend-management",
+        "https://vercel.com/docs/cli/usage",
+        "https://vercel.com/docs/limits/fair-use-guidelines",
+        "https://vercel.com/changelog/access-billing-usage-cost-data-api"
+      ]
+    }
+  ]
+}
