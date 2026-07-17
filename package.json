@@ -1,5 +1,5 @@
 {
-  "name": "frugal",
+  "name": "@yuanbopang/frugal",
   "version": "0.3.0",
   "description": "Cloud cost awareness plugin for coding agents (Claude Code, Codex, Copilot, Qoder, Gemini CLI, OpenCode, pi, Cursor, Windsurf, Cline, Kiro)",
   "license": "MIT",
@@ -37,5 +37,8 @@
   ],
   "scripts": {
     "test": "node --test tests/*.test.js && node scripts/check-rule-copies.js && node scripts/check-versions.js"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
