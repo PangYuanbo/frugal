@@ -61,7 +61,7 @@ spend surface.
 ### Claude Code
 
 ```
-/plugin marketplace add PangYuanbo/frugal
+/plugin marketplace add yuanboP/frugal
 /plugin install frugal
 ```
 

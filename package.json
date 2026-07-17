@@ -3,7 +3,7 @@
   "version": "0.3.0",
   "description": "Cloud cost awareness plugin for coding agents (Claude Code, Codex, Copilot, Qoder, Gemini CLI, OpenCode, pi, Cursor, Windsurf, Cline, Kiro)",
   "license": "MIT",
-  "repository": "github:PangYuanbo/frugal",
+  "repository": "github:yuanboP/frugal",
   "keywords": [
     "cost",
     "billing",

@@ -19,13 +19,13 @@
 **Claude Code**：
 
 ```
-/plugin marketplace add PangYuanbo/frugal
+/plugin marketplace add yuanboP/frugal
 /plugin install frugal
 ```
 
-**Codex**：`codex plugin marketplace add https://github.com/PangYuanbo/frugal.git && codex plugin add frugal@frugal`
+**Codex**：`codex plugin marketplace add https://github.com/yuanboP/frugal.git && codex plugin add frugal@frugal`
 
-**grok**：`grok plugin install https://github.com/PangYuanbo/frugal.git --trust`
+**grok**：`grok plugin install https://github.com/yuanboP/frugal.git --trust`
 
 **Cursor / Windsurf / Cline / Kiro / Qoder**：静态规则副本随仓库自动生效；Cursor 用户级安装：把 `.cursor/rules/frugal.mdc` 拷到 `~/.cursor/rules/`。
 
