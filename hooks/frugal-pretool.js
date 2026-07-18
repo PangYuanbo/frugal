@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // PreToolUse(Bash) hook: when a command touches a metered cloud provider,
 // inject a mode-scaled cost reminder. Once per provider per session; after
-// 5 reminders in a day, new providers still get a numbers-only brief.
+// 5 reminders in a day FOR THAT PROVIDER (quotas are per provider, not
+// pooled), it still gets a numbers-only brief.
 // Never blocks the command, never hangs, fails silent.
 
 const fs = require('fs');
@@ -49,20 +50,22 @@ process.stdin.on('end', () => {
 
   const today = new Date().toISOString().slice(0, 10);
   let daily = readJson(dailyFile, {});
-  if (daily.date !== today) daily = { date: today, count: 0 };
-  // Past the cap, degrade to quiet (numbers only) instead of going silent —
-  // a first touch of a new provider should never pass with zero notice.
-  const capped = daily.count >= DAILY_CAP;
+  if (daily.date !== today || !daily.providers) daily = { date: today, providers: {} };
 
   let seen = readJson(sessionFile, []);
   if (!Array.isArray(seen)) seen = [];
   const fresh = hits.filter((h) => !seen.includes(h.name));
   if (!fresh.length) return finish();
 
+  for (const h of fresh) daily.providers[h.name] = (daily.providers[h.name] || 0) + 1;
   try { fs.writeFileSync(sessionFile, JSON.stringify(seen.concat(fresh.map((h) => h.name)))); } catch {}
-  try { fs.writeFileSync(dailyFile, JSON.stringify({ date: today, count: daily.count + 1 })); } catch {}
+  try { fs.writeFileSync(dailyFile, JSON.stringify(daily)); } catch {}
 
-  const lines = fresh.map((h) => formatReminder(h, capped ? 'quiet' : mode)).filter(Boolean);
+  // Past a provider's own daily cap, degrade it to quiet (numbers only)
+  // instead of going silent — first touch never passes with zero notice.
+  const lines = fresh
+    .map((h) => formatReminder(h, daily.providers[h.name] > DAILY_CAP ? 'quiet' : mode))
+    .filter(Boolean);
   if (!lines.length) return finish();
 
   finish(lines.join('\n'));

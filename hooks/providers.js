@@ -11,6 +11,7 @@
 // Full plan tables: skills/frugal/references/providers.md; corpus: research/.
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 // Match only at command position: start of string, after ;|&( separators, or
@@ -239,6 +240,84 @@ const PROVIDERS = [
     dig: null },
 ];
 
+// Prose mentions for the UserPromptSubmit hook: the user *talking about* a
+// provider (not running its CLI) also earns a reminder. Only unambiguous
+// tokens — no bare 'render'/'modal'/'atlas'/'fly'/'resend' English words.
+const MENTIONS = [
+  ['Vercel', /\bvercel\b/i],
+  ['Cloudflare', /\bcloudflare\b|\bwrangler\b/i],
+  ['Neon', /\bneon(?:ctl|\s?db)?\b/i],
+  ['Railway', /\brailway\b/i],
+  ['Fly.io', /\bfly\.io\b|\bflyctl\b/i],
+  ['E2B', /\be2b\b/i],
+  ['Browserbase', /\bbrowserbase\b/i],
+  ['GitHub Actions', /\bgithub\s+actions?\b/i],
+  ['GitHub Codespaces', /\bcodespaces?\b/i],
+  ['Supabase', /\bsupabase\b/i],
+  ['Firebase', /\bfirebase\b/i],
+  ['Twilio', /\btwilio\b/i],
+  ['RunPod', /\brunpod\b/i],
+  ['Vast.ai', /\bvast\.ai\b|\bvastai\b/i],
+  ['Heroku', /\bheroku\b/i],
+  ['Netlify', /\bnetlify\b/i],
+  ['DigitalOcean', /\bdigital\s?ocean\b|\bdoctl\b/i],
+  ['MongoDB Atlas', /\bmongodb\s+atlas\b/i],
+  ['Email API', /\bmailgun\b|\bsendgrid\b/i],
+  ['Auth provider', /\bauth0\b/i],
+  ['Media/vector store', /\bcloudinary\b|\bpinecone\b|\bupstash\b/i],
+  ['Observability/logs', /\bdatadog\b|\bsentry\b/i],
+  ['AWS', /\baws\b|\bamazon\s+web\s+services\b/i],
+  ['GCP', /\bgcp\b|\bgoogle\s+cloud\b/i],
+  ['Azure', /\bazure\b/i],
+  ['IaC provisioning', /\bterraform\b|\bpulumi\b|\bopentofu\b/i],
+];
+
+function detectMentions(text) {
+  const t = String(text || '');
+  const out = [];
+  for (const [name, re] of MENTIONS) {
+    if (!re.test(t)) continue;
+    const p = PROVIDERS.find((x) => x.name === name);
+    if (p && !out.includes(p)) out.push(p);
+  }
+  return out;
+}
+
+const MENTION_HOUR = 3600 * 1000;
+const MENTION_DAILY_CAP = 10;
+
+// Extra reminder budget on top of the PreToolUse one, tracked PER PROVIDER:
+// each provider gets at most one reminder per hour and 10 per day. State
+// shared across sessions in tmpdir — the OS cleans it.
+// opts {file, now} exist for tests only.
+function mentionReminder(prompt, mode, opts) {
+  const o = opts || {};
+  if (!mode || mode === 'off') return null;
+  const hits = detectMentions(prompt);
+  if (!hits.length) return null;
+
+  const file = o.file || path.join(os.tmpdir(), 'frugal-mentions.json');
+  const now = o.now || Date.now();
+  const today = new Date(now).toISOString().slice(0, 10);
+  let state;
+  try { state = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { state = {}; }
+  if (state.date !== today || !state.providers) state = { date: today, providers: {} };
+
+  const allowed = hits.filter((h) => {
+    const s = state.providers[h.name] || { count: 0, last: 0 };
+    return s.count < MENTION_DAILY_CAP && now - s.last >= MENTION_HOUR;
+  });
+  const lines = allowed.map((h) => formatReminder(h, mode)).filter(Boolean);
+  if (!lines.length) return null;
+
+  for (const h of allowed) {
+    const s = state.providers[h.name] || { count: 0, last: 0 };
+    state.providers[h.name] = { count: s.count + 1, last: now };
+  }
+  try { fs.writeFileSync(file, JSON.stringify(state)); } catch {}
+  return lines.join('\n');
+}
+
 function detectProviders(command, input) {
   const text = String(command || '');
   const hits = PROVIDERS.filter((p) => p.pattern.test(text) && (!p.when || p.when(input)));
@@ -275,4 +354,4 @@ for (const p of PROVIDERS) {
   }
 }
 
-module.exports = { PROVIDERS, detectProviders, formatReminder };
+module.exports = { PROVIDERS, detectProviders, detectMentions, mentionReminder, formatReminder };

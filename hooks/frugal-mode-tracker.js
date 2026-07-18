@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // UserPromptSubmit: handle /frugal quiet|normal|strict|off|default <mode>
 // and re-inject level confirmation. Cheat-sheet requests leave mode alone.
+// Ordinary prompts that mention a billable provider get a throttled
+// reminder (1/hour, 10/day) — see mentionReminder in providers.js.
 
 const {
   getDefaultMode,
@@ -9,6 +11,7 @@ const {
   writeDefaultMode,
 } = require('./frugal-config');
 const { getFrugalInstructions } = require('./frugal-instructions');
+const { mentionReminder } = require('./providers');
 const { writeHookOutput } = require('./frugal-runtime');
 
 let input = '';
@@ -37,7 +40,7 @@ process.stdin.on('end', () => {
 
   // Match slash/at/dollar command forms hosts may use.
   if (!/^[/@$]frugal\b/.test(lower) && !/^frugal\s+(quiet|normal|strict|off|default)\b/.test(lower)) {
-    return finish();
+    return finish(mentionReminder(prompt, getDefaultMode()));
   }
 
   const parts = lower.replace(/^[@$]/, '/').split(/\s+/);

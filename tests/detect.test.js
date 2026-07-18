@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { detectProviders, formatReminder, PROVIDERS } = require('../hooks/providers');
+const { detectProviders, detectMentions, mentionReminder, formatReminder, PROVIDERS } = require('../hooks/providers');
 const { normalizeMode, filterBodyForMode } = (() => {
   const config = require('../hooks/frugal-config');
   const instr = require('../hooks/frugal-instructions');
@@ -79,6 +79,49 @@ test('ignores prose mentions and non-command positions', () => {
   assert.deepStrictEqual(names('gh pr view 12'), []);
   assert.deepStrictEqual(names('terraform plan'), []);
   assert.deepStrictEqual(names(''), []);
+});
+
+test('prose mentions map to providers (UserPromptSubmit)', () => {
+  const m = (t) => detectMentions(t).map((p) => p.name);
+  assert.deepStrictEqual(m('帮我把这个项目部署到vercel'), ['Vercel']);
+  assert.deepStrictEqual(m('use Cloudflare workers with a neon db'), ['Cloudflare', 'Neon']);
+  assert.deepStrictEqual(m('set up GitHub Actions CI'), ['GitHub Actions']);
+  // ambiguous English words never trigger
+  assert.deepStrictEqual(m('render the page with a modal, then fly home and resend it'), []);
+  assert.deepStrictEqual(m('just refactor this function'), []);
+});
+
+test('mentionReminder throttles 1/hour and 10/day per provider', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'frugal-mention-'));
+  const file = path.join(dir, 'state.json');
+  const HOUR = 3600 * 1000;
+  let now = Date.parse('2026-07-17T00:00:00Z');
+  try {
+    assert.match(mentionReminder('deploy to vercel', 'normal', { file, now }), /^frugal: Vercel/);
+    // within the hour: that provider is silent...
+    assert.equal(mentionReminder('deploy to vercel', 'normal', { file, now: now + 60 * 1000 }), null);
+    // ...but another provider has its own budget
+    assert.match(mentionReminder('try neon db', 'normal', { file, now: now + 60 * 1000 }), /^frugal: Neon/);
+    // mixed prompt: throttled provider dropped, fresh one kept
+    const mixed = mentionReminder('vercel + supabase', 'normal', { file, now: now + 120 * 1000 });
+    assert.match(mixed, /^frugal: Supabase/);
+    assert.doesNotMatch(mixed, /Vercel/);
+    // hourly, until Vercel's own daily cap of 10
+    for (let i = 1; i < 10; i++) {
+      now += HOUR;
+      assert.ok(mentionReminder('vercel again', 'normal', { file, now }));
+    }
+    assert.equal(mentionReminder('vercel again', 'normal', { file, now: now + HOUR }), null);
+    // Vercel capped, Neon still available
+    assert.match(mentionReminder('neon again', 'normal', { file, now: now + HOUR }), /^frugal: Neon/);
+    // next day resets
+    assert.ok(mentionReminder('vercel again', 'normal', { file, now: now + 24 * HOUR }));
+    // off mode and no-mention prompts never touch the budget
+    assert.equal(mentionReminder('vercel', 'off', { file, now }), null);
+    assert.equal(mentionReminder('hello', 'normal', { file, now }), null);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('formatReminder scales by mode (quiet < normal ≤ strict)', () => {
