@@ -8,7 +8,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { detectProviders, formatReminder } = require('./providers');
+const { detectProviders, formatReminder, formatAuditReminder } = require('./providers');
 const { getDefaultMode } = require('./frugal-config');
 const { writeHookOutput } = require('./frugal-runtime');
 
@@ -63,8 +63,14 @@ process.stdin.on('end', () => {
 
   // Past a provider's own daily cap, degrade it to quiet (numbers only)
   // instead of going silent — first touch never passes with zero notice.
+  // On the reminder that spends the cap, append a billing-audit task: five
+  // reminder-worthy touches in one day is heavy enough to go check the bill.
   const lines = fresh
-    .map((h) => formatReminder(h, daily.providers[h.name] > DAILY_CAP ? 'quiet' : mode))
+    .map((h) => {
+      const n = daily.providers[h.name];
+      const line = formatReminder(h, n > DAILY_CAP ? 'quiet' : mode);
+      return line && n === DAILY_CAP ? line + '\n' + formatAuditReminder(h) : line;
+    })
     .filter(Boolean);
   if (!lines.length) return finish();
 

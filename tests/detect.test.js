@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { detectProviders, detectMentions, mentionReminder, formatReminder, PROVIDERS } = require('../hooks/providers');
+const { detectProviders, detectMentions, mentionReminder, formatReminder, formatAuditReminder, PROVIDERS } = require('../hooks/providers');
 const { normalizeMode, filterBodyForMode } = (() => {
   const config = require('../hooks/frugal-config');
   const instr = require('../hooks/frugal-instructions');
@@ -142,6 +142,14 @@ test('formatReminder scales by mode (quiet < normal ≤ strict)', () => {
   assert.doesNotMatch(quiet, /Optional:/);
   assert.match(normal, /Optional: `vercel usage`/);
   assert.equal(formatReminder(vercel, 'off'), null);
+});
+
+test('formatAuditReminder points at the dig command or the dashboard', () => {
+  const vercel = PROVIDERS.find((p) => p.name === 'Vercel');
+  assert.match(formatAuditReminder(vercel), /AUDIT TASK/);
+  assert.match(formatAuditReminder(vercel), /`vercel usage`/);
+  const netlify = PROVIDERS.find((p) => p.name === 'Netlify'); // no dig
+  assert.match(formatAuditReminder(netlify), /billing dashboard/);
 });
 
 test('every provider brief has concrete numbers (not just shape words)', () => {

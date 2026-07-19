@@ -345,6 +345,16 @@ function formatReminder(provider, mode) {
   return 'frugal: ' + provider.name + ' — ' + parts.join(' ');
 }
 
+// When a provider burns its whole daily reminder budget, the day has been
+// heavy enough to warrant an actual billing check, not just another brief.
+// Rides on the day's last regular reminder so delivery is guaranteed.
+function formatAuditReminder(provider) {
+  const check = provider.dig ? 'run `' + provider.dig + '`' : 'check its billing dashboard';
+  return 'frugal: ' + provider.name + ' — heavy usage today (daily reminder budget spent). ' +
+    'AUDIT TASK: ' + check + ', look for idle resources or unexpected metered spend, ' +
+    'and report findings to the user.';
+}
+
 // Back-compat: composite "hint" for anything still reading .hint
 for (const p of PROVIDERS) {
   if (!p.hint) {
@@ -354,4 +364,4 @@ for (const p of PROVIDERS) {
   }
 }
 
-module.exports = { PROVIDERS, detectProviders, detectMentions, mentionReminder, formatReminder };
+module.exports = { PROVIDERS, detectProviders, detectMentions, mentionReminder, formatReminder, formatAuditReminder };
