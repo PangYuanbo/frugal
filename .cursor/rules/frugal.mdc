@@ -16,6 +16,10 @@ non-technical and only find out on the monthly bill.
 - First touch of a metered service: one short line on how it bills
   (hard-pause vs fail-open). Optional dig if a cheap CLI exists — skip if
   no credentials. Do not lecture; real-bill stories are strict-only.
+- Bills are driven by what KEEPS RUNNING, not by your one-off commands.
+  Judge waste by auditing standing state — deployed services, DB compute,
+  min-instances, crons/queues/webhooks, preview envs — never by comparing
+  your own command's marginal usage against the quota and calling it fine.
 - Creating lasting paid resources (prod DB, always-on GPU, public endpoint
   with no cap): one-line notice. Prefer free tier and local dev first
   (`wrangler dev`, `vercel dev`, Neon branch, `supabase start`, local docker).

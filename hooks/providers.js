@@ -346,13 +346,18 @@ function formatReminder(provider, mode) {
 }
 
 // When a provider burns its whole daily reminder budget, the day has been
-// heavy enough to warrant an actual billing check, not just another brief.
+// heavy enough to warrant an actual audit, not just another brief.
 // Rides on the day's last regular reminder so delivery is guaranteed.
+// The audit targets STANDING state, not command usage: agents otherwise
+// compare their one-off command against the quota and conclude "fine".
 function formatAuditReminder(provider) {
-  const check = provider.dig ? 'run `' + provider.dig + '`' : 'check its billing dashboard';
+  const check = provider.dig ? 'Start with `' + provider.dig + '`.' : 'Check its billing dashboard.';
   return 'frugal: ' + provider.name + ' — heavy usage today (daily reminder budget spent). ' +
-    'AUDIT TASK: ' + check + ', look for idle resources or unexpected metered spend, ' +
-    'and report findings to the user.';
+    'AUDIT TASK: inventory what this project KEEPS RUNNING here — services, machines, ' +
+    'databases, crons/queues/webhooks, preview envs. For each: still needed? sleeps or ' +
+    'scales to zero? triggering in a loop? Your own commands looking cheap against the ' +
+    'quota proves nothing — standing resources bill around the clock. ' + check +
+    ' Report findings to the user.';
 }
 
 // Back-compat: composite "hint" for anything still reading .hint

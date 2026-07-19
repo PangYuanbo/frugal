@@ -144,9 +144,11 @@ test('formatReminder scales by mode (quiet < normal ≤ strict)', () => {
   assert.equal(formatReminder(vercel, 'off'), null);
 });
 
-test('formatAuditReminder points at the dig command or the dashboard', () => {
+test('formatAuditReminder targets standing state, not command usage', () => {
   const vercel = PROVIDERS.find((p) => p.name === 'Vercel');
   assert.match(formatAuditReminder(vercel), /AUDIT TASK/);
+  assert.match(formatAuditReminder(vercel), /KEEPS RUNNING/);
+  assert.match(formatAuditReminder(vercel), /standing resources bill/);
   assert.match(formatAuditReminder(vercel), /`vercel usage`/);
   const netlify = PROVIDERS.find((p) => p.name === 'Netlify'); // no dig
   assert.match(formatAuditReminder(netlify), /billing dashboard/);
